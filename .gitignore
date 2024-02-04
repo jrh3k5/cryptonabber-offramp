@@ -20,5 +20,5 @@
 # Go workspace file
 go.work
 
-# Ignore testing changes.yaml used for testing
-changes.yaml
+# Ignore testing config.yaml used for testing
+config.yaml
