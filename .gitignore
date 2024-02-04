@@ -22,3 +22,6 @@ go.work
 
 # Ignore testing config.yaml used for testing
 config.yaml
+
+# Ignore locations of compiled artifacts
+dist
