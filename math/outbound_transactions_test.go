@@ -58,7 +58,7 @@ var _ = Describe("OutboundTransactions", func() {
 		})
 
 		When("the transactions include non-outbound transactions", func() {
-			It("filters out those transacitons", func() {
+			It("filters out those transactions", func() {
 				accountID := "not-all-outbound"
 				dateRange, _ := time.Parse(time.DateOnly, "2020-01-01")
 				transactions := []ynab.ScheduledTransactionDetail{

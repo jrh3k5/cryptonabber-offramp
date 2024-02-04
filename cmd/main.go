@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
@@ -15,6 +16,8 @@ import (
 	"github.com/jrh3k5/cryptonabber-offramp/qr"
 	"github.com/mdp/qrterminal"
 	"gopkg.in/yaml.v3"
+
+	cliynab "github.com/jrh3k5/cryptonabber-offramp/ynab"
 )
 
 func main() {
@@ -30,7 +33,7 @@ func main() {
 
 	fmt.Printf("Reading configuration from '%s'\n", file)
 
-	config, err := readConfiguration(file)
+	appConfig, err := readConfiguration(file)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to read configuration: %v", err))
 	}
@@ -42,20 +45,41 @@ func main() {
 	}
 	ynabClient := ynab.NewClient(ynabURL, http.DefaultClient, accessToken)
 
-	budget, err := getBudget(ynabClient, config.YNABBudgetName)
+	budget, err := getBudget(ynabClient, appConfig.YNABBudgetName)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get budget: %v", err))
 	} else if budget == nil {
-		panic(fmt.Sprintf("No budget found for name '%s'", config.YNABBudgetName))
+		panic(fmt.Sprintf("No budget found for name '%s'", appConfig.YNABBudgetName))
 	}
 
-	offrampAccountsByID, err := mapAccountNamesByID(ynabClient, budget.Id, config.YNABAccounts.OfframpAccounts)
+	allAccountNames := toUnique(append(appConfig.YNABAccounts.OfframpAccounts, appConfig.YNABAccounts.FundsOriginAccount, appConfig.YNABAccounts.FundsRecipientAccount))
+	accountNamesByID, err := mapAccountNamesByID(ynabClient, budget.Id, allAccountNames)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to map offramp accounts by ID: %v", err))
 	}
-	offrampAccountIDs := make([]string, 0, len(offrampAccountsByID))
-	for offrampAccountID := range offrampAccountsByID {
-		offrampAccountIDs = append(offrampAccountIDs, offrampAccountID)
+
+	allAccountIDs, err := getAccountIDs(accountNamesByID, allAccountNames)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to resolve all account IDs: %v", err))
+	}
+
+	offrampAccountIDs, err := getAccountIDs(accountNamesByID, appConfig.YNABAccounts.OfframpAccounts)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to resolve account IDs for offramp accounts: %v", err))
+	}
+
+	var fundsOriginAccountID string
+	if accountIDs, err := getAccountIDs(accountNamesByID, []string{appConfig.YNABAccounts.FundsOriginAccount}); err != nil {
+		panic(fmt.Sprintf("Failed to resolve funds origin account ID: %v", err))
+	} else {
+		fundsOriginAccountID = accountIDs[0]
+	}
+
+	var recipientAccountID string
+	if accountIDs, err := getAccountIDs(accountNamesByID, []string{appConfig.YNABAccounts.FundsRecipientAccount}); err != nil {
+		panic(fmt.Sprintf("Failed to resolve recipient account ID: %v", err))
+	} else {
+		recipientAccountID = accountIDs[0]
 	}
 
 	now := time.Now().UTC()
@@ -77,8 +101,38 @@ func main() {
 	fmt.Printf("Outbound Account Balances for [%s, %s]:\n", startDate.Format(time.DateOnly), endDate.Format(time.DateOnly))
 	for accountID, outboundBalance := range outboundBalances {
 		outboundCents += outboundBalance.ToCents()
-		accountName := offrampAccountsByID[accountID]
+		accountName := accountNamesByID[accountID]
 		fmt.Printf("  %s: $%d.%02d\n", accountName, outboundBalance.Dollars, outboundBalance.Cents)
+	}
+
+	if outboundCents == 0 {
+		fmt.Println("No upcoming transactions require funding; exiting")
+		return
+	}
+
+	fmt.Println("Creating transactions in YNAB...")
+
+	payeeIDsByAccountIDs, err := getTransferPayeeIDsByAccountID(ynabClient, budget.Id, allAccountIDs, accountNamesByID)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to resolve transfer payee IDs by account ID: %v", err))
+	}
+
+	transactions, err := cliynab.CreateTransactions(
+		fundsOriginAccountID,
+		recipientAccountID,
+		outboundBalances,
+		accountNamesByID,
+		payeeIDsByAccountIDs,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create transactions to send to YNAB: %v", err))
+	}
+
+	_, err = ynabClient.TransactionsService.CreateBulk(budget.Id, transactions)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create transfer transactions in YNAB: %v", err))
 	}
 
 	totalCents := outboundCents % 100
@@ -87,7 +141,7 @@ func main() {
 	fmt.Printf("Scan the following QR code and send $%d.%02d to the address it presents:\n", totalDollars, totalCents)
 
 	var urlGenerator qr.URLGenerator
-	qrCodeType := config.GetQRCodeType()
+	qrCodeType := appConfig.GetQRCodeType()
 	switch qrCodeType {
 	case "erc681":
 		urlGenerator = qr.NewERC681URLGenerator()
@@ -98,12 +152,12 @@ func main() {
 	}
 
 	qrDetails := &qr.Details{
-		ChainID:           config.ChainID,
-		ContactAddress:    config.ContractAddress,
-		Decimals:          config.Decimals,
-		ReceipientAddress: config.RecipientAddress,
-		Dollars:           1,  // TODO: calculate this
-		Cents:             52, // TODO: calculate this
+		ChainID:           appConfig.ChainID,
+		ContactAddress:    appConfig.ContractAddress,
+		Decimals:          appConfig.Decimals,
+		ReceipientAddress: appConfig.RecipientAddress,
+		Dollars:           totalDollars,
+		Cents:             totalCents,
 	}
 
 	url, err := urlGenerator.Generate(ctx, qrDetails)
@@ -112,6 +166,28 @@ func main() {
 	}
 
 	qrterminal.Generate(url, qrterminal.M, os.Stdout)
+}
+
+func getAccountIDs(accountNamesByID map[string]string, accountNames []string) ([]string, error) {
+	accountIDs := make([]string, 0, len(accountNames))
+	for accountID, accountName := range accountNamesByID {
+		for _, desiredAccountName := range accountNames {
+			if accountName == desiredAccountName {
+				accountIDs = append(accountIDs, accountID)
+				break
+			}
+		}
+	}
+
+	if len(accountIDs) != len(accountNames) {
+		return nil, fmt.Errorf("%d account names (['%s']) were requested, but only %d account IDs (['%s']) were resolved.",
+			len(accountNames),
+			strings.Join(accountNames, "', '"),
+			len(accountIDs),
+			strings.Join(accountIDs, "', '"))
+	}
+
+	return accountIDs, nil
 }
 
 func getBudget(ynabClient *ynab.Client, budgetName string) (*ynab.BudgetSummary, error) {
@@ -127,6 +203,34 @@ func getBudget(ynabClient *ynab.Client, budgetName string) (*ynab.BudgetSummary,
 	}
 
 	return nil, nil
+}
+
+func getTransferPayeeIDsByAccountID(ynabClient *ynab.Client, budgetID string, accountIDs []string, accountNamesByID map[string]string) (map[string]string, error) {
+	allPayees, err := ynabClient.PayeesService.List(budgetID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all payees: %w", err)
+	}
+
+	mappedPayeeIDs := make(map[string]string)
+	for _, accountID := range accountIDs {
+		accountName, hasAccountName := accountNamesByID[accountID]
+		if !hasAccountName {
+			return nil, fmt.Errorf("can't resolve payee ID; account ID '%s' has no known name", accountID)
+		}
+
+		payeeName := "Transfer : " + accountName
+		for _, payee := range allPayees {
+			if payee.Name == payeeName {
+				mappedPayeeIDs[accountID] = payee.Id
+			}
+		}
+	}
+
+	if len(mappedPayeeIDs) != len(accountIDs) {
+		return nil, fmt.Errorf("%d account IDs were requested for payee mapping, but only %d were resolved", len(accountIDs), len(mappedPayeeIDs))
+	}
+
+	return mappedPayeeIDs, nil
 }
 
 func mapAccountNamesByID(ynabClient *ynab.Client, budgetID string, accountNames []string) (map[string]string, error) {
@@ -160,4 +264,18 @@ func readConfiguration(file string) (*config.Config, error) {
 	}
 
 	return config, nil
+}
+
+func toUnique(values []string) []string {
+	uniqueMap := make(map[string]any)
+	for _, value := range values {
+		uniqueMap[value] = nil
+	}
+
+	uniqueValues := make([]string, 0, len(uniqueMap))
+	for mapKey := range uniqueMap {
+		uniqueValues = append(uniqueValues, mapKey)
+	}
+
+	return uniqueValues
 }
