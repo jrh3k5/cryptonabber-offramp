@@ -11,7 +11,9 @@ type Config struct {
 }
 
 type YNABAccountsConfig struct {
-	OfframpAccounts []string `yaml:"offramp_accounts"`
+	FundsOriginAccount    string   `yaml:"funds_origin_account"`
+	FundsRecipientAccount string   `yaml:"funds_recipient_account"`
+	OfframpAccounts       []string `yaml:"offramp_accounts"`
 }
 
 func (c *Config) GetQRCodeType() string {

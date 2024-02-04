@@ -1,0 +1,137 @@
+package ynab_test
+
+import (
+	"time"
+
+	"github.com/davidsteinsland/ynab-go/ynab"
+	"github.com/jrh3k5/cryptonabber-offramp/math"
+	cliynab "github.com/jrh3k5/cryptonabber-offramp/ynab"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+var _ = Describe("Transactions", func() {
+	Context("CreateTransactions", func() {
+		var fundsOriginAccountID string
+		var fundsRecipientAccountID string
+		var offrampAccountID0 string
+		var offrampAccountID1 string
+
+		var outboundBalances map[string]*math.OutboundTransactionBalance
+		var namesByID map[string]string
+		var payeesByAccountID map[string]string
+		var startDate time.Time
+		var endDate time.Time
+
+		BeforeEach(func() {
+			fundsOriginAccountID = "funds-origin"
+			fundsRecipientAccountID = "funds-recipient"
+
+			offrampAccountID0 = "offramp0"
+			offrampAccountID1 = "offramp1"
+
+			namesByID = map[string]string{
+				fundsOriginAccountID:    "Funds Origin",
+				fundsRecipientAccountID: "Funds Recipient",
+				offrampAccountID0:       "Offramp 0",
+				offrampAccountID1:       "Offramp 1",
+			}
+
+			payeesByAccountID = map[string]string{
+				fundsOriginAccountID:    "payee-origin",
+				fundsRecipientAccountID: "payee-recipient",
+				offrampAccountID0:       "payee-offramp0",
+				offrampAccountID1:       "payee-offramp1",
+			}
+
+			outboundBalances = map[string]*math.OutboundTransactionBalance{
+				offrampAccountID0: {
+					Dollars: 1,
+					Cents:   23,
+				},
+				offrampAccountID1: {
+					Dollars: 420,
+					Cents:   69,
+				},
+			}
+
+			startDate, _ = time.Parse(time.DateOnly, "2024-02-01")
+			endDate, _ = time.Parse(time.DateOnly, "2024-02-03")
+		})
+
+		It("creates the transactions to transfer funds", func() {
+			recipientAccountPayeeID := payeesByAccountID[fundsRecipientAccountID]
+			// sanity check
+			Expect(recipientAccountPayeeID).ToNot(BeEmpty(), "there should be a payee ID for the recipient account set up")
+
+			transactions, err := cliynab.CreateTransactions(fundsOriginAccountID,
+				fundsRecipientAccountID,
+				outboundBalances,
+				namesByID,
+				payeesByAccountID,
+				startDate,
+				endDate)
+
+			Expect(err).ToNot(HaveOccurred(), "creating the transactions should not fail")
+			Expect(transactions).To(HaveLen(3), "the correct number of transactions should be created")
+
+			fundsOriginTransaction := getTransactionByAccountID(fundsOriginAccountID, transactions)
+			Expect(fundsOriginTransaction.Amount).To(Equal(-421920), "the funds origin account should be debited the total amount")
+			Expect(fundsOriginTransaction.PayeeId).To(Equal(recipientAccountPayeeID), "the funds origin transaction should be a transfer to the funds recipient account")
+
+			offramp0Transaction := getTransactionByAccountID(offrampAccountID0, transactions)
+			Expect(offramp0Transaction.Amount).To(Equal(1230), "offramp account 0 should be receiving its outbound amount")
+			Expect(offramp0Transaction.PayeeId).To(Equal(recipientAccountPayeeID), "the funds should be coming from the recipient account")
+
+			offramp1Transaction := getTransactionByAccountID(offrampAccountID1, transactions)
+			Expect(offramp1Transaction.Amount).To(Equal(420690), "offramp account 1 should be receiving its outbound amount")
+			Expect(offramp1Transaction.PayeeId).To(Equal(recipientAccountPayeeID), "the funds should be coming from the recipient account")
+		})
+
+		When("the recipient account is among the offramp accounts", func() {
+			BeforeEach(func() {
+				outboundBalances[fundsRecipientAccountID] = &math.OutboundTransactionBalance{
+					Dollars: 456,
+					Cents:   12,
+				}
+			})
+
+			It("adds it to the funds transfer, but does not generate a transfer between the recipient account and itself", func() {
+				transactions, err := cliynab.CreateTransactions(fundsOriginAccountID,
+					fundsRecipientAccountID,
+					outboundBalances,
+					namesByID,
+					payeesByAccountID,
+					startDate,
+					endDate)
+
+				Expect(err).ToNot(HaveOccurred(), "creating the transactions should not fail")
+				Expect(transactions).To(HaveLen(3), "the correct number of transactions should be created")
+
+				fundsOriginTransaction := getTransactionByAccountID(fundsOriginAccountID, transactions)
+				Expect(fundsOriginTransaction.Amount).To(Equal(-878040), "the transfer out of the funds origination account should include the amount staying in the recipient account")
+
+				Expect(getTransactionsByAccountID(fundsRecipientAccountID, transactions)).To(BeEmpty(), "there should be no transactions for funds staying in the recipient account")
+			})
+		})
+	})
+})
+
+func getTransactionByAccountID(accountID string, transactions []ynab.SaveTransaction) ynab.SaveTransaction {
+	matches := getTransactionsByAccountID(accountID, transactions)
+
+	Expect(matches).To(HaveLen(1), "there should only be one transaction for account ID '%s'", accountID)
+
+	return matches[0]
+}
+
+func getTransactionsByAccountID(accountID string, transactions []ynab.SaveTransaction) []ynab.SaveTransaction {
+	var matches []ynab.SaveTransaction
+	for _, transaction := range transactions {
+		if transaction.AccountId == accountID {
+			matches = append(matches, transaction)
+		}
+	}
+
+	return matches
+}
