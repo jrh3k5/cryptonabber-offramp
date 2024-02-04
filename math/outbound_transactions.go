@@ -17,6 +17,8 @@ func (o *OutboundTransactionBalance) ToCents() int {
 	return (o.Dollars * 100) + o.Cents
 }
 
+// CalculateOutboundTransactions will pull, from the given scheduled transactions, all outbound transactions that are happening
+// within the given start and end date/time (inclusive) for the given account IDs.
 func CalculateOutboundTransactions(accountIDs []string, transactions []ynab.ScheduledTransactionDetail, startDate time.Time, endDate time.Time) (map[string]*OutboundTransactionBalance, error) {
 	filteredByAccount := filterToAccountIDs(transactions, accountIDs)
 
