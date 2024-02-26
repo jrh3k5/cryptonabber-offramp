@@ -14,6 +14,7 @@ import (
 	"github.com/jrh3k5/cryptonabber-offramp/config"
 	"github.com/jrh3k5/cryptonabber-offramp/math"
 	"github.com/jrh3k5/cryptonabber-offramp/qr"
+	"github.com/manifoldco/promptui"
 	"github.com/mdp/qrterminal"
 	"gopkg.in/yaml.v3"
 
@@ -82,10 +83,39 @@ func main() {
 		recipientAccountID = accountIDs[0]
 	}
 
-	now := time.Now().UTC()
+	now := time.Now().Local()
 	nowDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	startDate := nowDay.Add(7 * 24 * time.Hour)
+
+	isValidDate := func(v string) error {
+		_, parseErr := time.Parse(time.DateOnly, v)
+		return parseErr
+	}
+
+	startDatePrompt := &promptui.Prompt{
+		Label:    "Start date",
+		Default:  startDate.Format(time.DateOnly),
+		Validate: isValidDate,
+	}
+	startDateStr, startDatePromptErr := startDatePrompt.Run()
+	if startDatePromptErr != nil {
+		panic(fmt.Sprintf("Failed to get start date: %v", startDatePromptErr))
+	}
+	// the Validate function in the prompt ensures that it's a valid date value
+	startDate, _ = time.Parse(time.DateOnly, startDateStr)
+
 	endDate := startDate.Add(6 * 24 * time.Hour)
+	endDatePrompt := &promptui.Prompt{
+		Label:    "End date",
+		Default:  endDate.Format(time.DateOnly),
+		Validate: isValidDate,
+	}
+	endDateStr, endDatePromptErr := endDatePrompt.Run()
+	if endDatePromptErr != nil {
+		panic(fmt.Sprintf("Failed to get end date: %v", endDatePromptErr))
+	}
+	// the Validate function in the prompt ensures that it's a valid date value
+	endDate, _ = time.Parse(time.DateOnly, endDateStr)
 
 	scheduledTransactions, err := ynabClient.ScheduledTransactionsService.List(budget.Id)
 	if err != nil {
