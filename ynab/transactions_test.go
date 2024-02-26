@@ -114,6 +114,31 @@ var _ = Describe("Transactions", func() {
 				Expect(getTransactionsByAccountID(fundsRecipientAccountID, transactions)).To(BeEmpty(), "there should be no transactions for funds staying in the recipient account")
 			})
 		})
+
+		When("one of the offramp accounts has zero currency moving", func() {
+			It("does not create a transaction for that account", func() {
+				outboundBalances[offrampAccountID1].Cents = 0
+				outboundBalances[offrampAccountID1].Dollars = 0
+
+				transactions, err := cliynab.CreateTransactions(fundsOriginAccountID,
+					fundsRecipientAccountID,
+					outboundBalances,
+					namesByID,
+					payeesByAccountID,
+					startDate,
+					endDate)
+
+				Expect(err).ToNot(HaveOccurred(), "creating the transactions should not fail")
+				Expect(transactions).To(HaveLen(2), "only accounts with a non-zero sum of transactions should be created")
+
+				// This makes sure that only transactions involving the fund source account and offramp account 0.
+				// These calls fail the test if the requested account is not present.
+				// As the above ensures there are only two transactions, this confirms that those two are
+				// for the expected accounts.
+				getTransactionByAccountID(offrampAccountID0, transactions)
+				getTransactionByAccountID(fundsOriginAccountID, transactions)
+			})
+		})
 	})
 })
 
