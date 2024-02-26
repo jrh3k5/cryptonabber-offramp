@@ -56,6 +56,11 @@ func CreateTransactions(
 			continue
 		}
 
+		// If nothing's moving, don't create a transaction for it.
+		if outboundBalance.Cents+outboundBalance.Dollars == 0 {
+			continue
+		}
+
 		transactions = append(transactions, ynab.SaveTransaction{
 			AccountId: offrampAccountID,
 			PayeeId:   recipientAccountPayeeID,
