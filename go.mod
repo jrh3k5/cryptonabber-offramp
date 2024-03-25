@@ -7,7 +7,7 @@ require (
 	github.com/manifoldco/promptui v0.9.0
 	github.com/mdp/qrterminal v1.0.1
 	github.com/onsi/ginkgo/v2 v2.16.0
-	github.com/onsi/gomega v1.31.1
+	github.com/onsi/gomega v1.32.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
