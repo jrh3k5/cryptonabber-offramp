@@ -11,9 +11,9 @@ type Config struct {
 }
 
 type YNABAccountsConfig struct {
-	FundsOriginAccount    string   `yaml:"funds_origin_account"`
-	FundsRecipientAccount string   `yaml:"funds_recipient_account"`
-	OfframpAccounts       []string `yaml:"offramp_accounts"`
+	FundsOriginAccount    string                      `yaml:"funds_origin_account"`
+	FundsRecipientAccount string                      `yaml:"funds_recipient_account"`
+	OfframpAccounts       []*YNABOfframpAccountConfig `yaml:"offramp_accounts"`
 }
 
 func (c *Config) GetQRCodeType() string {
@@ -22,4 +22,9 @@ func (c *Config) GetQRCodeType() string {
 	}
 
 	return *c.QRCodeType
+}
+
+type YNABOfframpAccountConfig struct {
+	Name               string   `yaml:"name"`
+	ExcludedFlagColors []string `yaml:"excluded_flag_colors"`
 }

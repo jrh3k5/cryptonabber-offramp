@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	"github.com/jrh3k5/cryptonabber-offramp/math"
+	"github.com/jrh3k5/cryptonabber-offramp/v2/math"
 )
 
 // CreateTransactions creates all of the necessary transactions to record the transfers between accounts.

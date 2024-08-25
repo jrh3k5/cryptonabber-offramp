@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	"github.com/jrh3k5/cryptonabber-offramp/config"
-	"github.com/jrh3k5/cryptonabber-offramp/math"
-	"github.com/jrh3k5/cryptonabber-offramp/qr"
+	"github.com/jrh3k5/cryptonabber-offramp/v2/config"
+	"github.com/jrh3k5/cryptonabber-offramp/v2/math"
+	"github.com/jrh3k5/cryptonabber-offramp/v2/qr"
 	"github.com/manifoldco/promptui"
 	"github.com/mdp/qrterminal"
 	"gopkg.in/yaml.v3"
 
-	cliynab "github.com/jrh3k5/cryptonabber-offramp/ynab"
+	cliynab "github.com/jrh3k5/cryptonabber-offramp/v2/ynab"
 )
 
 func main() {
@@ -53,7 +53,12 @@ func main() {
 		panic(fmt.Sprintf("No budget found for name '%s'", appConfig.YNABBudgetName))
 	}
 
-	allAccountNames := toUnique(append(appConfig.YNABAccounts.OfframpAccounts, appConfig.YNABAccounts.FundsOriginAccount, appConfig.YNABAccounts.FundsRecipientAccount))
+	offrampAccountNames := make([]string, len(appConfig.YNABAccounts.OfframpAccounts))
+	for accountIndex, offrampAccount := range appConfig.YNABAccounts.OfframpAccounts {
+		offrampAccountNames[accountIndex] = offrampAccount.Name
+	}
+
+	allAccountNames := toUnique(append(offrampAccountNames, appConfig.YNABAccounts.FundsOriginAccount, appConfig.YNABAccounts.FundsRecipientAccount))
 	accountNamesByID, err := mapAccountNamesByID(ynabClient, budget.Id, allAccountNames)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to map offramp accounts by ID: %v", err))
@@ -64,7 +69,7 @@ func main() {
 		panic(fmt.Sprintf("Failed to resolve all account IDs: %v", err))
 	}
 
-	offrampAccountIDs, err := getAccountIDs(accountNamesByID, appConfig.YNABAccounts.OfframpAccounts)
+	offrampAccountIDs, err := getAccountIDs(accountNamesByID, offrampAccountNames)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to resolve account IDs for offramp accounts: %v", err))
 	}
@@ -122,7 +127,16 @@ func main() {
 		panic(fmt.Sprintf("Failed to get scheduled transactions: %v", err))
 	}
 
-	outboundBalances, err := math.CalculateOutboundTransactions(offrampAccountIDs, scheduledTransactions, startDate, endDate)
+	excludedColorsByAccountID := make(map[string][]string)
+	for _, offrampAccount := range appConfig.YNABAccounts.OfframpAccounts {
+		for accountID, accountName := range accountNamesByID {
+			if accountName == offrampAccount.Name {
+				excludedColorsByAccountID[accountID] = offrampAccount.ExcludedFlagColors
+			}
+		}
+	}
+
+	outboundBalances, err := math.CalculateOutboundTransactions(offrampAccountIDs, excludedColorsByAccountID, scheduledTransactions, startDate, endDate)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to calculate outbound transactions: %v", err))
 	}

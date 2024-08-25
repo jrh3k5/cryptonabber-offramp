@@ -1,6 +1,6 @@
-module github.com/jrh3k5/cryptonabber-offramp
+module github.com/jrh3k5/cryptonabber-offramp/v2
 
-go 1.21.3
+go 1.23.0
 
 require (
 	github.com/davidsteinsland/ynab-go v0.0.0-20180509062024-abfe6d465a99

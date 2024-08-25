@@ -3,7 +3,7 @@ package qr_test
 import (
 	"context"
 
-	"github.com/jrh3k5/cryptonabber-offramp/qr"
+	"github.com/jrh3k5/cryptonabber-offramp/v2/qr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

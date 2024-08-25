@@ -19,7 +19,13 @@ func (o *OutboundTransactionBalance) ToCents() int {
 
 // CalculateOutboundTransactions will pull, from the given scheduled transactions, all outbound transactions that are happening
 // within the given start and end date/time (inclusive) for the given account IDs.
-func CalculateOutboundTransactions(accountIDs []string, transactions []ynab.ScheduledTransactionDetail, startDate time.Time, endDate time.Time) (map[string]*OutboundTransactionBalance, error) {
+func CalculateOutboundTransactions(
+	accountIDs []string,
+	excludedColorsByAccountID map[string][]string,
+	transactions []ynab.ScheduledTransactionDetail,
+	startDate time.Time,
+	endDate time.Time,
+) (map[string]*OutboundTransactionBalance, error) {
 	filteredByAccount := filterToAccountIDs(transactions, accountIDs)
 
 	filteredByDate, err := filterTransactionsByDateRange(filteredByAccount, startDate, endDate)
@@ -29,7 +35,9 @@ func CalculateOutboundTransactions(accountIDs []string, transactions []ynab.Sche
 
 	outboundOnly := filterToOutboundOnly(filteredByDate)
 
-	grouped := groupTransactionsByAccountID(accountIDs, outboundOnly)
+	onlyAllowedFlags := filterToOnlyAllowedFlags(outboundOnly, excludedColorsByAccountID)
+
+	grouped := groupTransactionsByAccountID(accountIDs, onlyAllowedFlags)
 
 	balances := make(map[string]*OutboundTransactionBalance)
 	for accountID, accountTransactions := range grouped {
@@ -65,6 +73,37 @@ func filterToAccountIDs(transactions []ynab.ScheduledTransactionDetail, accountI
 	}
 
 	return included
+}
+func filterToOnlyAllowedFlags(transactions []ynab.ScheduledTransactionDetail, excludedColorsByAccountID map[string][]string) []ynab.ScheduledTransactionDetail {
+	if excludedColorsByAccountID == nil {
+		return transactions
+	}
+
+	trimmedDown := make([]ynab.ScheduledTransactionDetail, len(transactions))
+	copy(trimmedDown, transactions)
+
+	for i := len(trimmedDown) - 1; i >= 0; i-- {
+		transaction := trimmedDown[i]
+		if transaction.FlagColor == nil {
+			continue
+		}
+
+		excludedColors, hasExclusions := excludedColorsByAccountID[transaction.AccountId]
+		if !hasExclusions {
+			continue
+		}
+
+		for _, excludedColor := range excludedColors {
+			if excludedColor == *transaction.FlagColor {
+				fmt.Printf("Removing transaction: %v\n", transaction)
+				trimmedDown = append(trimmedDown[:i], trimmedDown[i+1:]...)
+
+				break
+			}
+		}
+	}
+
+	return trimmedDown
 }
 
 func filterToOutboundOnly(transactions []ynab.ScheduledTransactionDetail) []ynab.ScheduledTransactionDetail {
