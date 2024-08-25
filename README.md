@@ -37,7 +37,10 @@ ynab_accounts:
   funds_origin_account: "<the name of the account you use to track the wallet from which you'll be sending funds>"
   funds_recipient_account: "<the name of the account you use to track the address to which you'll be sending funds for offboarding>"
   offramp_accounts:
-    - "<a list of the names of accounts to which the funds are to be offramped>"
+    - name: "<the name of the offramp destination account as it appears in YNAB>"
+      excluded_flag_colors:
+        - green
+        - <optional flag colors of transactions to be excluded from the calculation>
 ```
 
 #### QR Code Type

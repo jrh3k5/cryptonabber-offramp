@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	"github.com/jrh3k5/cryptonabber-offramp/math"
+	"github.com/jrh3k5/cryptonabber-offramp/v2/math"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -42,7 +42,7 @@ var _ = Describe("OutboundTransactions", func() {
 				},
 			}
 
-			grouped, err := math.CalculateOutboundTransactions([]string{accountID0, accountID1}, transactions, startDate, endDate)
+			grouped, err := math.CalculateOutboundTransactions([]string{accountID0, accountID1}, nil, transactions, startDate, endDate)
 			Expect(err).ToNot(HaveOccurred(), "the calculation should not fail")
 			Expect(grouped).To(And(
 				HaveLen(2),
@@ -78,7 +78,7 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, transactions, dateRange, dateRange)
+				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
 				Expect(err).ToNot(HaveOccurred(), "calcuating the transactions should not fail")
 				Expect(grouped).To(HaveKey(accountID), "the account should be returned")
 				Expect(grouped[accountID].ToCents()).To(Equal(456), "the balance should not include the inbound transaction")
@@ -106,7 +106,7 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, transactions, dateRange, dateRange)
+				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
 				Expect(err).ToNot(HaveOccurred(), "calulating the transactions should not fail")
 				Expect(grouped).To(And(HaveLen(1), HaveKey(accountID)), "only the desired account should be in the returned amounts")
 			})
@@ -133,7 +133,7 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, transactions, dateRange, dateRange)
+				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
 				Expect(err).ToNot(HaveOccurred(), "calculating the outbound transactions should not fail")
 				Expect(grouped).To(HaveKey(accountID), "the account should be in the returned transactions")
 				Expect(grouped[accountID].ToCents()).To(Equal(123), "only the amount that fits in the date range should be accepted")
@@ -161,10 +161,62 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, transactions, dateRange, dateRange)
+				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
 				Expect(err).ToNot(HaveOccurred(), "calculating the outbound transactions should not fail")
 				Expect(grouped).To(HaveKey(accountID), "the account should be in the returned transactions")
 				Expect(grouped[accountID].ToCents()).To(Equal(123), "only the amount that fits in the date range should be accepted")
+			})
+		})
+
+		When("the transaction has an excluded flag color", func() {
+			It("filters out those transactions", func() {
+				accountID0 := "account0"
+				accountID1 := "account1"
+
+				excludedFlagColor := "red"
+
+				startDate, _ := time.Parse(time.DateOnly, "2020-01-01")
+				endDate, _ := time.Parse(time.DateOnly, "2020-01-03")
+				transactions := []ynab.ScheduledTransactionDetail{
+					{
+						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							AccountId: accountID0,
+							Amount:    -1230,
+							DateNext:  startDate.Format(time.DateOnly),
+						},
+					},
+					{
+						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							AccountId: accountID1,
+							Amount:    -456780,
+							DateNext:  endDate.Format(time.DateOnly),
+						},
+					},
+					{
+						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							AccountId: accountID0,
+							Amount:    -560,
+							DateNext:  startDate.Add(24 * time.Hour).Format(time.DateOnly),
+							FlagColor: &excludedFlagColor, // this excludes this tranasction from consideration
+						},
+					},
+				}
+
+				grouped, err := math.CalculateOutboundTransactions([]string{accountID0, accountID1}, map[string][]string{
+					accountID0: {excludedFlagColor},
+				}, transactions, startDate, endDate)
+				Expect(err).ToNot(HaveOccurred(), "the calculation should not fail")
+				Expect(grouped).To(And(
+					HaveLen(2),
+					HaveKey(accountID0),
+					HaveKey(accountID1),
+				), "all of the given accounts should be returned")
+
+				account0Balance := grouped[accountID0]
+				Expect(account0Balance.ToCents()).To(Equal(123), "account0 should have $1.23 outbound")
+
+				account1Balance := grouped[accountID1]
+				Expect(account1Balance.ToCents()).To(Equal(45678), "account1 should have $456.78 outbound")
 			})
 		})
 	})

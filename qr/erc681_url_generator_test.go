@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/jrh3k5/cryptonabber-offramp/qr"
+	"github.com/jrh3k5/cryptonabber-offramp/v2/qr"
 )
 
 var _ = Describe("Erc681UrlGenerator", func() {
