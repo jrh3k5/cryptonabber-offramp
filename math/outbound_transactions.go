@@ -95,7 +95,6 @@ func filterToOnlyAllowedFlags(transactions []ynab.ScheduledTransactionDetail, ex
 
 		for _, excludedColor := range excludedColors {
 			if excludedColor == *transaction.FlagColor {
-				fmt.Printf("Removing transaction: %v\n", transaction)
 				trimmedDown = append(trimmedDown[:i], trimmedDown[i+1:]...)
 
 				break
