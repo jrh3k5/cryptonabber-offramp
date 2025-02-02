@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,26 +10,29 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	"github.com/jrh3k5/cryptonabber-offramp/v2/config"
-	"github.com/jrh3k5/cryptonabber-offramp/v2/math"
-	"github.com/jrh3k5/cryptonabber-offramp/v2/qr"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/config"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/qr"
+	"github.com/jrh3k5/oauth-cli/pkg/auth"
 	"github.com/manifoldco/promptui"
 	"github.com/mdp/qrterminal"
 	"gopkg.in/yaml.v3"
 
-	cliynab "github.com/jrh3k5/cryptonabber-offramp/v2/ynab"
+	cliynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
 
 func main() {
 	ctx := context.Background()
 
-	var file string
-	flag.StringVar(&file, "file", "", "the location of the file to be read in as configuration")
+	oauthToken, err := auth.DefaultGetOAuthToken(ctx,
+		"https://app.ynab.com/oauth/authorize",
+		"https://api.ynab.com/oauth/token",
+	)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get OAuth token: %v", err))
+	}
 
-	var accessToken string
-	flag.StringVar(&accessToken, "access-token", "", "the personal access token used to interact with YNAB's APIs")
-
-	flag.Parse()
+	file := getConfigFile()
 
 	fmt.Printf("Reading configuration from '%s'\n", file)
 
@@ -44,7 +46,7 @@ func main() {
 		// ??? how?
 		panic(fmt.Sprintf("unable to parse hard-coded YNAB URL: %v", err))
 	}
-	ynabClient := ynab.NewClient(ynabURL, http.DefaultClient, accessToken)
+	ynabClient := ynab.NewClient(ynabURL, http.DefaultClient, oauthToken.AccessToken)
 
 	budget, err := getBudget(ynabClient, appConfig.YNABBudgetName)
 	if err != nil {
@@ -247,6 +249,16 @@ func getBudget(ynabClient *ynab.Client, budgetName string) (*ynab.BudgetSummary,
 	}
 
 	return nil, nil
+}
+
+func getConfigFile() string {
+	for _, arg := range os.Args {
+		if strings.HasPrefix(arg, "--file=") {
+			return strings.TrimPrefix(arg, "--file=")
+		}
+	}
+
+	return "config.yaml"
 }
 
 func getTransferPayeeIDsByAccountID(ynabClient *ynab.Client, budgetID string, accountIDs []string, accountNamesByID map[string]string) (map[string]string, error) {
