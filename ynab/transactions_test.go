@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	"github.com/jrh3k5/cryptonabber-offramp/v2/math"
-	cliynab "github.com/jrh3k5/cryptonabber-offramp/v2/ynab"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
+	cliynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

@@ -1,3 +1,8 @@
+build:
+	go build -o dist/cryptonabber-offramp cmd/main.go
+
+release: release-clean release-build
+
 release-clean:
 	rm -rf dist
 

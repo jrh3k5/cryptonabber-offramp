@@ -11,16 +11,28 @@ A CLI tool to make offramping with YNAB integration easier. It does the followin
 
 ## Usage
 
-This tool receives two parameters:
+### Prerequisites
 
-* An `access-token` parameter containing your YNAB personal access token
-* A `file` parameter describing the location of the YAML file to drive the behavior of this tool
+* You must have a [YNAB](https://ynab.com) account with a budget and accounts to set up
+* You must have a registered OAuth client ID and secret as described [here](https://api.ynab.com/#oauth-applications).
 
-It will look like:
+### Executing the Program
+
+You can either supply the OAuth credentials interactively by executing this application as:
 
 ```
-./cryptonabber-offramp --access-token="FAKE04678" --file="config.yaml"
+/cryptonabber-offramp --interactive
 ```
+
+...or you can supply the OAuth credentials non-interactively by executing this application as:
+
+```
+/cryptonabber-offramp --oauth-client-id=<client ID> --oauth-client-secret=<client secret>
+```
+
+You can provide the following optional arguments:
+
+* `--file`: by default, this application looks for a file called `config.yaml` in the local directory; if you would like to use a different filename or location, you can use this parameter to specify that
 
 ### Configuration
 
