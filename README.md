@@ -61,3 +61,9 @@ By default, this tool generates an ERC-681-compliant QR code. You can set the YA
 
 * `erc681`: the default; this generates an ERC-681-compliant QR code
 * `recipient_only`: the QR code will merely contain the address to which the funds are to be sent
+
+## Privacy Policy
+
+This application does not persist any information given to this application. It only uses the access granted to your account within YNAB to read upcoming transactions and create inter-account transfers funding those upcoming transactions, as defined by the configuration you provide to this tool.
+
+No data given to this application or read from YNAB is shared with any third parties.
