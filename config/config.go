@@ -51,7 +51,7 @@ func (y *YNABOfframpAccountConfig) MinimumBalanceAsCents() (int, bool, error) {
 
 	periodPos := strings.Index(minimumBalanceString, ".")
 	if periodPos == -1 {
-		parsedDollarsInt64, err := strconv.ParseInt(minimumBalanceString, 10, 64)
+		parsedDollarsInt64, err := strconv.Atoi(minimumBalanceString)
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to parse minimum balance '%s' as an integer: %v", minimumBalanceString, err)
 		}
