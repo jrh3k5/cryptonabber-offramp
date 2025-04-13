@@ -90,6 +90,17 @@ func main() {
 		recipientAccountID = accountIDs[0]
 	}
 
+	var urlGenerator qr.URLGenerator
+	qrCodeType := appConfig.GetQRCodeType()
+	switch qrCodeType {
+	case "erc681":
+		urlGenerator = qr.NewERC681URLGenerator()
+	case "recipient_only":
+		urlGenerator = qr.NewRecipientAddressURLGenerator()
+	default:
+		panic(fmt.Sprintf("Unsupported QR code type: %v", qrCodeType))
+	}
+
 	now := time.Now().Local()
 	nowDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	startDate := nowDay.Add(7 * 24 * time.Hour)
@@ -143,12 +154,53 @@ func main() {
 		panic(fmt.Sprintf("Failed to calculate outbound transactions: %v", err))
 	}
 
+	adjustmentsByAccountID := make(map[string]*cliynab.MinimumBalanceAdjustment)
+	for _, offrampAccount := range appConfig.YNABAccounts.OfframpAccounts {
+		minimumBalanceCents, hasMinimumBalance, err := offrampAccount.MinimumBalanceAsCents()
+		if err != nil {
+			panic(fmt.Sprintf("Failed to parse minimum balance for account '%s': %v", offrampAccount.Name, err))
+		} else if !hasMinimumBalance {
+			continue
+		}
+
+		for accountID, accountName := range accountNamesByID {
+			if accountName == offrampAccount.Name {
+				ynabAccount, err := ynabClient.AccountsService.Get(budget.Id, accountID)
+				if err != nil {
+					panic(fmt.Sprintf("Failed to get account '%s' by ID '%s': %v", accountName, accountID, err))
+				}
+
+				balanceAdjustment, err := math.CalculateMinimumBalanceAdjustment(ynabAccount, scheduledTransactions, minimumBalanceCents, endDate)
+				if err != nil {
+					panic(fmt.Sprintf("Failed to calculate minimum balance adjustment for account '%s' by ID '%s': %v", accountName, accountID, err))
+				}
+
+				adjustmentsByAccountID[accountID] = balanceAdjustment
+			}
+		}
+	}
+
 	outboundCents := 0
 	fmt.Printf("Outbound Account Balances for [%s, %s]:\n", startDate.Format(time.DateOnly), endDate.Format(time.DateOnly))
 	for accountID, outboundBalance := range outboundBalances {
-		outboundCents += outboundBalance.ToCents()
-		accountName := accountNamesByID[accountID]
-		fmt.Printf("  %s: $%d.%02d\n", accountName, outboundBalance.Dollars, outboundBalance.Cents)
+		outboundBalanceCents := outboundBalance.ToCents()
+
+		balanceAdjustment, hasAdjustment := adjustmentsByAccountID[accountID]
+
+		totalCents := outboundBalanceCents
+		if hasAdjustment {
+			totalCents += balanceAdjustment.ToCents()
+		}
+		totalCentsRemainder := totalCents % 100
+		totalDollars := (totalCents - totalCentsRemainder) / 100
+
+		if !hasAdjustment || balanceAdjustment.ToCents() == 0 {
+			fmt.Printf("  %s: $%d.%02d\n", accountNamesByID[accountID], totalDollars, totalCentsRemainder)
+		} else {
+			fmt.Printf("  %s: %d.%02d (bills: %s, balance adjustment %s)\n", accountNamesByID[accountID], totalDollars, totalCentsRemainder, outboundBalance, balanceAdjustment)
+		}
+
+		outboundCents += totalCents
 	}
 
 	if outboundCents == 0 {
@@ -167,6 +219,7 @@ func main() {
 		fundsOriginAccountID,
 		recipientAccountID,
 		outboundBalances,
+		adjustmentsByAccountID,
 		accountNamesByID,
 		payeeIDsByAccountIDs,
 		startDate,
@@ -185,17 +238,6 @@ func main() {
 	totalDollars := (outboundCents - totalCents) / 100
 
 	fmt.Printf("Scan the following QR code and send $%d.%02d to the address it presents:\n", totalDollars, totalCents)
-
-	var urlGenerator qr.URLGenerator
-	qrCodeType := appConfig.GetQRCodeType()
-	switch qrCodeType {
-	case "erc681":
-		urlGenerator = qr.NewERC681URLGenerator()
-	case "recipient_only":
-		urlGenerator = qr.NewRecipientAddressURLGenerator()
-	default:
-		panic(fmt.Sprintf("Unsupported QR code type: %v", qrCodeType))
-	}
 
 	qrDetails := &qr.Details{
 		ChainID:           appConfig.ChainID,
