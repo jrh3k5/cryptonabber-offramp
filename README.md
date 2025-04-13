@@ -50,6 +50,7 @@ ynab_accounts:
   funds_recipient_account: "<the name of the account you use to track the address to which you'll be sending funds for offboarding>"
   offramp_accounts:
     - name: "<the name of the offramp destination account as it appears in YNAB>"
+      minimum_balance: <optional; the minimum balance that should be left in the account after all transactions through the given end date have been executed>
       excluded_flag_colors:
         - green
         - <optional flag colors of transactions to be excluded from the calculation>

@@ -91,6 +91,50 @@ var _ = Describe("Transactions", func() {
 			Expect(offramp1Transaction.PayeeId).To(Equal(recipientAccountPayeeID), "the funds should be coming from the recipient account")
 		})
 
+		When("there is a minimum balance adjustment for one of the accounts", func() {
+			var minimumBalanceAdjustment *cliynab.MinimumBalanceAdjustment
+
+			BeforeEach(func() {
+				minimumBalanceAdjustment = &cliynab.MinimumBalanceAdjustment{
+					Dollars: 100,
+					Cents:   25,
+				}
+
+				balanceAdjustmentsByAccountID[offrampAccountID0] = minimumBalanceAdjustment
+			})
+
+			It("incorporates the minimum balance adjustment", func() {
+				recipientAccountPayeeID := payeesByAccountID[fundsRecipientAccountID]
+				// sanity check
+				Expect(recipientAccountPayeeID).ToNot(BeEmpty(), "there should be a payee ID for the recipient account set up")
+
+				transactions, err := cliynab.CreateTransactions(fundsOriginAccountID,
+					fundsRecipientAccountID,
+					outboundBalances,
+					balanceAdjustmentsByAccountID,
+					namesByID,
+					payeesByAccountID,
+					startDate,
+					endDate)
+
+				Expect(err).ToNot(HaveOccurred(), "creating the transactions should not fail")
+				Expect(transactions).To(HaveLen(3), "the correct number of transactions should be created")
+
+				fundsOriginTransaction := getTransactionByAccountID(fundsOriginAccountID, transactions)
+				Expect(fundsOriginTransaction.Amount).To(Equal(-522170), "the funds origin account should be debited the total amount (including minimum balance adjustment)")
+				Expect(fundsOriginTransaction.PayeeId).To(Equal(recipientAccountPayeeID), "the funds origin transaction should be a transfer to the funds recipient account")
+
+				offramp0Transaction := getTransactionByAccountID(offrampAccountID0, transactions)
+				Expect(offramp0Transaction.Amount).To(Equal(101480), "offramp account 0 should be receiving its outbound amount (including minimum balance adjustment)")
+				Expect(offramp0Transaction.PayeeId).To(Equal(recipientAccountPayeeID), "the funds should be coming from the recipient account")
+				Expect(offramp0Transaction.Memo).To(ContainSubstring("minimum balance adjustment: $100.25"), "the minimum balance should be mentioned in the memo")
+
+				offramp1Transaction := getTransactionByAccountID(offrampAccountID1, transactions)
+				Expect(offramp1Transaction.Amount).To(Equal(420690), "offramp account 1 should be receiving its outbound amount")
+				Expect(offramp1Transaction.PayeeId).To(Equal(recipientAccountPayeeID), "the funds should be coming from the recipient account")
+			})
+		})
+
 		When("the recipient account is among the offramp accounts", func() {
 			BeforeEach(func() {
 				outboundBalances[fundsRecipientAccountID] = &cliynab.OutboundTransactionBalance{
