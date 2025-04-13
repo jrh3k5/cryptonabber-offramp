@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
 	cliynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -17,7 +16,8 @@ var _ = Describe("Transactions", func() {
 		var offrampAccountID0 string
 		var offrampAccountID1 string
 
-		var outboundBalances map[string]*math.OutboundTransactionBalance
+		var outboundBalances map[string]*cliynab.OutboundTransactionBalance
+		var balanceAdjustmentsByAccountID map[string]*cliynab.MinimumBalanceAdjustment
 		var namesByID map[string]string
 		var payeesByAccountID map[string]string
 		var startDate time.Time
@@ -44,7 +44,7 @@ var _ = Describe("Transactions", func() {
 				offrampAccountID1:       "payee-offramp1",
 			}
 
-			outboundBalances = map[string]*math.OutboundTransactionBalance{
+			outboundBalances = map[string]*cliynab.OutboundTransactionBalance{
 				offrampAccountID0: {
 					Dollars: 1,
 					Cents:   23,
@@ -54,6 +54,8 @@ var _ = Describe("Transactions", func() {
 					Cents:   69,
 				},
 			}
+
+			balanceAdjustmentsByAccountID = map[string]*cliynab.MinimumBalanceAdjustment{}
 
 			startDate, _ = time.Parse(time.DateOnly, "2024-02-01")
 			endDate, _ = time.Parse(time.DateOnly, "2024-02-03")
@@ -67,6 +69,7 @@ var _ = Describe("Transactions", func() {
 			transactions, err := cliynab.CreateTransactions(fundsOriginAccountID,
 				fundsRecipientAccountID,
 				outboundBalances,
+				balanceAdjustmentsByAccountID,
 				namesByID,
 				payeesByAccountID,
 				startDate,
@@ -90,7 +93,7 @@ var _ = Describe("Transactions", func() {
 
 		When("the recipient account is among the offramp accounts", func() {
 			BeforeEach(func() {
-				outboundBalances[fundsRecipientAccountID] = &math.OutboundTransactionBalance{
+				outboundBalances[fundsRecipientAccountID] = &cliynab.OutboundTransactionBalance{
 					Dollars: 456,
 					Cents:   12,
 				}
@@ -100,6 +103,7 @@ var _ = Describe("Transactions", func() {
 				transactions, err := cliynab.CreateTransactions(fundsOriginAccountID,
 					fundsRecipientAccountID,
 					outboundBalances,
+					balanceAdjustmentsByAccountID,
 					namesByID,
 					payeesByAccountID,
 					startDate,
@@ -123,6 +127,7 @@ var _ = Describe("Transactions", func() {
 				transactions, err := cliynab.CreateTransactions(fundsOriginAccountID,
 					fundsRecipientAccountID,
 					outboundBalances,
+					balanceAdjustmentsByAccountID,
 					namesByID,
 					payeesByAccountID,
 					startDate,
