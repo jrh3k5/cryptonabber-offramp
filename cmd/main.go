@@ -212,7 +212,7 @@ func main() {
 		if !hasAdjustment || balanceAdjustment.ToCents() == 0 {
 			fmt.Printf("  %s: $%d.%02d\n", accountNamesByID[accountID], totalDollars, totalCentsRemainder)
 		} else {
-			fmt.Printf("  %s: %d.%02d (bills: %s, balance adjustment %s)\n", accountNamesByID[accountID], totalDollars, totalCentsRemainder, outboundBalance, balanceAdjustment)
+			fmt.Printf("  %s: $%d.%02d (bills: %s, balance adjustment %s)\n", accountNamesByID[accountID], totalDollars, totalCentsRemainder, outboundBalance, balanceAdjustment)
 		}
 
 		outboundCents += totalCents
