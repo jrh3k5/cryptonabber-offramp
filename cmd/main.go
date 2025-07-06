@@ -181,8 +181,6 @@ func main() {
 					panic(fmt.Sprintf("Failed to calculate minimum balance adjustment for account '%s' by ID '%s': %v", accountName, accountID, err))
 				}
 
-				fmt.Printf("Calculated balance adjustment for account '%s': %s", accountName, balanceAdjustment)
-
 				adjustmentsByAccountID[accountID] = balanceAdjustment
 				createdAdjustment = true
 
