@@ -24,6 +24,11 @@ import (
 func main() {
 	ctx := context.Background()
 
+	dryRun := isDryRun()
+	if dryRun {
+		fmt.Println("Dry run enabled; will not create transactions in YNAB")
+	}
+
 	oauthToken, err := auth.DefaultGetOAuthToken(ctx,
 		"https://app.ynab.com/oauth/authorize",
 		"https://api.ynab.com/oauth/token",
@@ -163,6 +168,7 @@ func main() {
 			continue
 		}
 
+		createdAdjustment := false
 		for accountID, accountName := range accountNamesByID {
 			if accountName == offrampAccount.Name {
 				ynabAccount, err := ynabClient.AccountsService.Get(budget.Id, accountID)
@@ -175,8 +181,17 @@ func main() {
 					panic(fmt.Sprintf("Failed to calculate minimum balance adjustment for account '%s' by ID '%s': %v", accountName, accountID, err))
 				}
 
+				fmt.Printf("Calculated balance adjustment for account '%s': %s", accountName, balanceAdjustment)
+
 				adjustmentsByAccountID[accountID] = balanceAdjustment
+				createdAdjustment = true
+
+				break
 			}
+		}
+
+		if !createdAdjustment {
+			fmt.Printf("No balance adjustment created for account '%s'; its outbound balances will not reflect a minimum amount maintenance\n", offrampAccount.Name)
 		}
 	}
 
@@ -205,6 +220,11 @@ func main() {
 
 	if outboundCents == 0 {
 		fmt.Println("No upcoming transactions require funding; exiting")
+		return
+	}
+
+	if dryRun {
+		// Skip all writes to YNAB
 		return
 	}
 
@@ -329,6 +349,16 @@ func getTransferPayeeIDsByAccountID(ynabClient *ynab.Client, budgetID string, ac
 	}
 
 	return mappedPayeeIDs, nil
+}
+
+func isDryRun() bool {
+	for _, arg := range os.Args {
+		if strings.HasPrefix(arg, "--dry-run=") {
+			return strings.EqualFold(arg[len("--dry-run="):], "true")
+		}
+	}
+
+	return false
 }
 
 func mapAccountNamesByID(ynabClient *ynab.Client, budgetID string, accountNames []string) (map[string]string, error) {
