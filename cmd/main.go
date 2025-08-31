@@ -11,6 +11,7 @@ import (
 
 	"github.com/davidsteinsland/ynab-go/ynab"
 	"github.com/jrh3k5/cryptonabber-offramp/v3/config"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/currency"
 	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
 	"github.com/jrh3k5/cryptonabber-offramp/v3/qr"
 	"github.com/jrh3k5/oauth-cli/pkg/auth"
@@ -27,6 +28,11 @@ func main() {
 	dryRun := isDryRun()
 	if dryRun {
 		fmt.Println("Dry run enabled; will not create transactions in YNAB")
+	}
+
+	debug := isDebug()
+	if debug {
+		fmt.Println("Debug mode enabled")
 	}
 
 	oauthToken, err := auth.DefaultGetOAuthToken(ctx,
@@ -176,7 +182,7 @@ func main() {
 					panic(fmt.Sprintf("Failed to get account '%s' by ID '%s': %v", accountName, accountID, err))
 				}
 
-				balanceAdjustment, err := math.CalculateMinimumBalanceAdjustment(ynabAccount, scheduledTransactions, minimumBalanceCents, endDate)
+				balanceAdjustment, err := math.CalculateMinimumBalanceAdjustment(ynabAccount, scheduledTransactions, minimumBalanceCents, endDate, debug)
 				if err != nil {
 					panic(fmt.Sprintf("Failed to calculate minimum balance adjustment for account '%s' by ID '%s': %v", accountName, accountID, err))
 				}
@@ -208,9 +214,9 @@ func main() {
 		totalDollars := (totalCents - totalCentsRemainder) / 100
 
 		if !hasAdjustment || balanceAdjustment.ToCents() == 0 {
-			fmt.Printf("  %s: $%d.%02d\n", accountNamesByID[accountID], totalDollars, totalCentsRemainder)
+			fmt.Printf("  %s: %s\n", accountNamesByID[accountID], currency.FormatDollarsAndCents(totalDollars, totalCentsRemainder))
 		} else {
-			fmt.Printf("  %s: $%d.%02d (bills: %s, balance adjustment %s)\n", accountNamesByID[accountID], totalDollars, totalCentsRemainder, outboundBalance, balanceAdjustment)
+			fmt.Printf("  %s: %s (bills: %s, balance adjustment %s)\n", accountNamesByID[accountID], currency.FormatDollarsAndCents(totalDollars, totalCentsRemainder), outboundBalance, balanceAdjustment)
 		}
 
 		outboundCents += totalCents
@@ -255,7 +261,7 @@ func main() {
 	totalCents := outboundCents % 100
 	totalDollars := (outboundCents - totalCents) / 100
 
-	fmt.Printf("Scan the following QR code and send $%d.%02d to the address it presents:\n", totalDollars, totalCents)
+	fmt.Printf("Scan the following QR code and send %s to the address it presents:\n", currency.FormatDollarsAndCents(totalDollars, totalCents))
 
 	qrDetails := &qr.Details{
 		ChainID:           appConfig.ChainID,
@@ -353,6 +359,16 @@ func isDryRun() bool {
 	for _, arg := range os.Args {
 		if strings.HasPrefix(arg, "--dry-run=") {
 			return strings.EqualFold(arg[len("--dry-run="):], "true")
+		}
+	}
+
+	return false
+}
+
+func isDebug() bool {
+	for _, arg := range os.Args {
+		if arg == "--debug" {
+			return true
 		}
 	}
 

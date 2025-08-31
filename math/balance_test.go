@@ -33,6 +33,7 @@ var _ = Describe("Balance", func() {
 					},
 					1000, // 10.00 USD
 					now.Add(24*time.Hour),
+					false,
 				)
 
 				Expect(err).NotTo(HaveOccurred(), "calculating the minimum balance adjustment should not fail")
@@ -64,6 +65,7 @@ var _ = Describe("Balance", func() {
 					},
 					1000, // 10.00 USD, which should be less than the account balance
 					now.Add(24*time.Hour),
+					false,
 				)
 
 				Expect(err).NotTo(HaveOccurred(), "calculating the minimum balance adjustment should not fail")
@@ -95,6 +97,7 @@ var _ = Describe("Balance", func() {
 					},
 					1000, // 10.00 USD
 					now.Add(24*time.Hour),
+					false,
 				)
 
 				Expect(err).NotTo(HaveOccurred(), "calculating the minimum balance adjustment should not fail")
