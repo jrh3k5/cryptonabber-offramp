@@ -28,6 +28,11 @@ jobs:
           gofmt -s -l .
           exit 1
         fi
+        if [ "$(goimports -l . | wc -l)" -gt 0 ]; then
+          echo "The following files have incorrect imports:"
+          goimports -l .
+          exit 1
+        fi
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v6

@@ -14,7 +14,7 @@ func FormatCents(cents int) string {
 }
 
 // FormatDollarsAndCents formats the given USD dollars and cents to a dollar-and-cents string.
-func FormatDollarsAndCents(dollars int, cents int) string {
+func FormatDollarsAndCents(dollars, cents int) string {
 	absoluteDollars := int(math.Abs(float64(dollars)))
 	absoluteCents := int(math.Abs(float64(cents)))
 

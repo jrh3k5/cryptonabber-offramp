@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
+
 	"github.com/jrh3k5/cryptonabber-offramp/v3/currency"
 	offrampynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
@@ -62,13 +63,9 @@ func CalculateMinimumBalanceAdjustment(
 		fmt.Printf("Total expenses: %s\n", currency.FormatDollarsAndCents(totalDollars, totalCents))
 	}
 
-	var effectiveBalanceThrough int
-	if len(filteredTransactions) >= 0 {
-		var err error
-		effectiveBalanceThrough, err = CalculateEffectiveBalanceThrough(account.Balance, filteredTransactions, endDateTime)
-		if err != nil {
-			return nil, fmt.Errorf("failed to calculate effective balance through: %w", err)
-		}
+	effectiveBalanceThrough, err := CalculateEffectiveBalanceThrough(account.Balance, filteredTransactions, endDateTime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate effective balance through: %w", err)
 	}
 
 	effectiveBalanceDollar, effectiveBalanceRemainingCents := toDollarsAndCents(effectiveBalanceThrough)

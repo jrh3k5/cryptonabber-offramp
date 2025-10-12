@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	"github.com/jrh3k5/cryptonabber-offramp/v3/config"
-	"github.com/jrh3k5/cryptonabber-offramp/v3/currency"
-	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
-	"github.com/jrh3k5/cryptonabber-offramp/v3/qr"
 	"github.com/jrh3k5/oauth-cli/pkg/auth"
 	"github.com/manifoldco/promptui"
 	"github.com/mdp/qrterminal"
 	"gopkg.in/yaml.v3"
+
+	"github.com/jrh3k5/cryptonabber-offramp/v3/config"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/currency"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/qr"
 
 	cliynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
@@ -176,22 +177,23 @@ func main() {
 
 		createdAdjustment := false
 		for accountID, accountName := range accountNamesByID {
-			if accountName == offrampAccount.Name {
-				ynabAccount, err := ynabClient.AccountsService.Get(budget.Id, accountID)
-				if err != nil {
-					panic(fmt.Sprintf("Failed to get account '%s' by ID '%s': %v", accountName, accountID, err))
-				}
-
-				balanceAdjustment, err := math.CalculateMinimumBalanceAdjustment(ynabAccount, scheduledTransactions, minimumBalanceCents, endDate, debug)
-				if err != nil {
-					panic(fmt.Sprintf("Failed to calculate minimum balance adjustment for account '%s' by ID '%s': %v", accountName, accountID, err))
-				}
-
-				adjustmentsByAccountID[accountID] = balanceAdjustment
-				createdAdjustment = true
-
-				break
+			if accountName != offrampAccount.Name {
+				continue
 			}
+			ynabAccount, err := ynabClient.AccountsService.Get(budget.Id, accountID)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to get account '%s' by ID '%s': %v", accountName, accountID, err))
+			}
+
+			balanceAdjustment, err := math.CalculateMinimumBalanceAdjustment(ynabAccount, scheduledTransactions, minimumBalanceCents, endDate, debug)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to calculate minimum balance adjustment for account '%s' by ID '%s': %v", accountName, accountID, err))
+			}
+
+			adjustmentsByAccountID[accountID] = balanceAdjustment
+			createdAdjustment = true
+
+			break
 		}
 
 		if !createdAdjustment {
@@ -292,7 +294,7 @@ func getAccountIDs(accountNamesByID map[string]string, accountNames []string) ([
 	}
 
 	if len(accountIDs) != len(accountNames) {
-		return nil, fmt.Errorf("%d account names (['%s']) were requested, but only %d account IDs (['%s']) were resolved.",
+		return nil, fmt.Errorf("%d account names (['%s']) were requested, but only %d account IDs (['%s']) were resolved",
 			len(accountNames),
 			strings.Join(accountNames, "', '"),
 			len(accountIDs),

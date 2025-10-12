@@ -95,7 +95,7 @@ func CreateTransactions(
 	return transactions, nil
 }
 
-func buildBasicTransferMemo(startDate time.Time, endDate time.Time, minimumBalanceAdjustment *MinimumBalanceAdjustment) string {
+func buildBasicTransferMemo(startDate, endDate time.Time, minimumBalanceAdjustment *MinimumBalanceAdjustment) string {
 	memoString := fmt.Sprintf("Bills %s - %s", startDate.Format("01/02"), endDate.Format("01/02"))
 	if minimumBalanceAdjustment != nil {
 		memoString += fmt.Sprintf(" (minimum balance adjustment: %s)", minimumBalanceAdjustment.String())

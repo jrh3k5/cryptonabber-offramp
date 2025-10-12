@@ -4,9 +4,10 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
 )
 
 var _ = Describe("Balance", func() {

@@ -3,9 +3,10 @@ package qr_test
 import (
 	"context"
 
-	"github.com/jrh3k5/cryptonabber-offramp/v3/qr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/jrh3k5/cryptonabber-offramp/v3/qr"
 )
 
 var _ = Describe("RecipientAddressURLGenerator", func() {

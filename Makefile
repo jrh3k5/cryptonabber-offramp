@@ -3,6 +3,7 @@ build:
 
 fmt:
 	go fmt ./...
+	go run golang.org/x/tools/cmd/goimports@latest -w -local github.com/jrh3k5/cryptonabber-offramp .
 
 lint:
 	golangci-lint run

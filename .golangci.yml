@@ -24,7 +24,6 @@ linters:
     - gocyclo       # Checks cyclomatic complexity
     - gocritic      # Provides many diagnostics
     - stylecheck    # Replacement for golint
-    - exportloopref # Checks for pointers to enclosing loop variables
     - errorlint     # Find code that will cause problems with Go 1.13+ error wrapping
     - bodyclose     # Checks HTTP response body is closed
     - nilerr        # Finds code that returns nil even if error is checked
