@@ -188,6 +188,26 @@ var _ = Describe("Transactions", func() {
 				getTransactionByAccountID(offrampAccountID0, transactions)
 				getTransactionByAccountID(fundsOriginAccountID, transactions)
 			})
+
+			It("does not include the account in the summary memo", func() {
+				outboundBalances[offrampAccountID1].Cents = 0
+				outboundBalances[offrampAccountID1].Dollars = 0
+
+				transactions, err := cliynab.CreateTransactions(fundsOriginAccountID,
+					fundsRecipientAccountID,
+					outboundBalances,
+					balanceAdjustmentsByAccountID,
+					namesByID,
+					payeesByAccountID,
+					startDate,
+					endDate)
+
+				Expect(err).ToNot(HaveOccurred(), "creating the transactions should not fail")
+
+				fundsOriginTransaction := getTransactionByAccountID(fundsOriginAccountID, transactions)
+				Expect(fundsOriginTransaction.Memo).ToNot(ContainSubstring("Offramp 1"), "accounts with zero balance transfer should not appear in the memo")
+				Expect(fundsOriginTransaction.Memo).To(ContainSubstring("Offramp 0"), "accounts with non-zero balance transfer should appear in the memo")
+			})
 		})
 	})
 })
