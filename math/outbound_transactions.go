@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
+
 	offrampynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
 
@@ -77,7 +78,7 @@ func filterToOnlyAllowedFlags(transactions []ynab.ScheduledTransactionDetail, ex
 }
 
 func filterToOutboundOnly(transactions []ynab.ScheduledTransactionDetail) []ynab.ScheduledTransactionDetail {
-	var included []ynab.ScheduledTransactionDetail
+	included := make([]ynab.ScheduledTransactionDetail, 0, len(transactions))
 
 	for _, transaction := range transactions {
 		if transaction.Amount >= 0 {
@@ -90,8 +91,8 @@ func filterToOutboundOnly(transactions []ynab.ScheduledTransactionDetail) []ynab
 	return included
 }
 
-func filterTransactionsByDateRange(transactions []ynab.ScheduledTransactionDetail, startDate time.Time, endDate time.Time) ([]ynab.ScheduledTransactionDetail, error) {
-	var included []ynab.ScheduledTransactionDetail
+func filterTransactionsByDateRange(transactions []ynab.ScheduledTransactionDetail, startDate, endDate time.Time) ([]ynab.ScheduledTransactionDetail, error) {
+	included := make([]ynab.ScheduledTransactionDetail, 0, len(transactions))
 
 	for _, transaction := range transactions {
 		isAfterInclusive, err := offrampynab.IsScheduledAfterInclusive(transaction.ScheduledTransactionSummary, startDate)

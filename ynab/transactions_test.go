@@ -4,9 +4,10 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-	cliynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	cliynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
 
 var _ = Describe("Transactions", func() {

@@ -7,7 +7,7 @@ import (
 	"github.com/davidsteinsland/ynab-go/ynab"
 )
 
-// IsScheduledAfterInclusive returns true if the scheduled transaction is scheduled for after the given date
+// IsScheduledAfterInclusive returns true if the scheduled transaction is scheduled for after the given date.
 func IsScheduledAfterInclusive(
 	scheduledTransactionSummary ynab.ScheduledTransactionSummary,
 	dateTime time.Time,
@@ -20,7 +20,7 @@ func IsScheduledAfterInclusive(
 	return nextDate.Equal(dateTime) || nextDate.After(dateTime), nil
 }
 
-// IsScheduledBeforeInclusive returns true if the scheduled transaction is scheduled for before the given date
+// IsScheduledBeforeInclusive returns true if the scheduled transaction is scheduled for before the given date.
 func IsScheduledBeforeInclusive(
 	scheduledTransactionSummary ynab.ScheduledTransactionSummary,
 	dateTime time.Time,

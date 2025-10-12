@@ -11,7 +11,7 @@ import (
 type ERC681URLGenerator struct {
 }
 
-// NewERC681URLGenerator
+// NewERC681URLGenerator creates a new ERC681URLGenerator.
 func NewERC681URLGenerator() *ERC681URLGenerator {
 	return &ERC681URLGenerator{}
 }
