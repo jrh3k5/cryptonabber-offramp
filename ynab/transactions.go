@@ -123,7 +123,7 @@ func buildSummaryMemo(
 	accountTotals := make([]string, 0, len(perAccountTotalAmounts))
 	for accountID, totalTransferAmount := range perAccountTotalAmounts {
 		if totalTransferAmount == 0 {
-			// No need to document that nothing's being transferred to a particular account'
+			// No need to document that nothing's being transferred to a particular account
 			continue
 		}
 
