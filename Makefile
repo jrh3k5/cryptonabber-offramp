@@ -1,6 +1,12 @@
 build:
 	go build -o dist/cryptonabber-offramp cmd/main.go
 
+fmt:
+	go fmt ./...
+
+lint:
+	golangci-lint run
+
 release: release-clean release-build
 
 release-clean:
