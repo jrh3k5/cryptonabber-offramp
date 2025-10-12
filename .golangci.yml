@@ -41,6 +41,7 @@ linters-settings:
     enable-all: true
     disable:
       - shadow      # Can be too strict for some codebases
+      - fieldalignment  # Struct field ordering for memory optimization
 
   revive:
     rules:
@@ -78,6 +79,7 @@ linters-settings:
     disabled-checks:
       - unnamedResult
       - hugeParam
+      - rangeValCopy
 
   stylecheck:
     checks: ["all", "-ST1000", "-ST1003"]
