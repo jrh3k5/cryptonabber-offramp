@@ -36,6 +36,63 @@ func main() {
 		fmt.Println("Debug mode enabled")
 	}
 
+	ynabClient, budget, appConfig := setupYNABClient(ctx)
+
+	accountInfo := resolveAccountInfo(ynabClient, budget.Id, appConfig)
+
+	urlGenerator := createURLGenerator(appConfig)
+
+	startDate, endDate := promptForDateRange()
+
+	scheduledTransactions := getScheduledTransactions(ynabClient, budget.Id)
+
+	outboundBalances, adjustmentsByAccountID := calculateBalances(
+		ynabClient,
+		budget.Id,
+		appConfig,
+		accountInfo,
+		scheduledTransactions,
+		startDate,
+		endDate,
+		debug,
+	)
+
+	outboundCents := displayBalances(outboundBalances, adjustmentsByAccountID, accountInfo.accountNamesByID, startDate, endDate)
+
+	if outboundCents == 0 {
+		fmt.Println("No upcoming transactions require funding; exiting")
+		return
+	}
+
+	if dryRun {
+		// Skip all writes to YNAB
+		return
+	}
+
+	createTransactionsAndGenerateQR(
+		ctx,
+		ynabClient,
+		budget.Id,
+		appConfig,
+		accountInfo,
+		outboundBalances,
+		adjustmentsByAccountID,
+		startDate,
+		endDate,
+		outboundCents,
+		urlGenerator,
+	)
+}
+
+type accountInfoData struct {
+	allAccountIDs        []string
+	offrampAccountIDs    []string
+	fundsOriginAccountID string
+	recipientAccountID   string
+	accountNamesByID     map[string]string
+}
+
+func setupYNABClient(ctx context.Context) (*ynab.Client, *ynab.BudgetSummary, *config.Config) {
 	oauthToken, err := auth.DefaultGetOAuthToken(ctx,
 		"https://app.ynab.com/oauth/authorize",
 		"https://api.ynab.com/oauth/token",
@@ -45,7 +102,6 @@ func main() {
 	}
 
 	file := getConfigFile()
-
 	fmt.Printf("Reading configuration from '%s'\n", file)
 
 	appConfig, err := readConfiguration(file)
@@ -63,17 +119,22 @@ func main() {
 	budget, err := getBudget(ynabClient, appConfig.YNABBudgetName)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get budget: %v", err))
-	} else if budget == nil {
+	}
+	if budget == nil {
 		panic(fmt.Sprintf("No budget found for name '%s'", appConfig.YNABBudgetName))
 	}
 
+	return ynabClient, budget, appConfig
+}
+
+func resolveAccountInfo(ynabClient *ynab.Client, budgetID string, appConfig *config.Config) accountInfoData {
 	offrampAccountNames := make([]string, len(appConfig.YNABAccounts.OfframpAccounts))
 	for accountIndex, offrampAccount := range appConfig.YNABAccounts.OfframpAccounts {
 		offrampAccountNames[accountIndex] = offrampAccount.Name
 	}
 
 	allAccountNames := toUnique(append(offrampAccountNames, appConfig.YNABAccounts.FundsOriginAccount, appConfig.YNABAccounts.FundsRecipientAccount))
-	accountNamesByID, err := mapAccountNamesByID(ynabClient, budget.Id, allAccountNames)
+	accountNamesByID, err := mapAccountNamesByID(ynabClient, budgetID, allAccountNames)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to map offramp accounts by ID: %v", err))
 	}
@@ -88,31 +149,39 @@ func main() {
 		panic(fmt.Sprintf("Failed to resolve account IDs for offramp accounts: %v", err))
 	}
 
-	var fundsOriginAccountID string
-	if accountIDs, err := getAccountIDs(accountNamesByID, []string{appConfig.YNABAccounts.FundsOriginAccount}); err != nil {
-		panic(fmt.Sprintf("Failed to resolve funds origin account ID: %v", err))
-	} else {
-		fundsOriginAccountID = accountIDs[0]
-	}
+	fundsOriginAccountID := resolveSingleAccountID(accountNamesByID, appConfig.YNABAccounts.FundsOriginAccount, "funds origin")
+	recipientAccountID := resolveSingleAccountID(accountNamesByID, appConfig.YNABAccounts.FundsRecipientAccount, "recipient")
 
-	var recipientAccountID string
-	if accountIDs, err := getAccountIDs(accountNamesByID, []string{appConfig.YNABAccounts.FundsRecipientAccount}); err != nil {
-		panic(fmt.Sprintf("Failed to resolve recipient account ID: %v", err))
-	} else {
-		recipientAccountID = accountIDs[0]
+	return accountInfoData{
+		allAccountIDs:        allAccountIDs,
+		offrampAccountIDs:    offrampAccountIDs,
+		fundsOriginAccountID: fundsOriginAccountID,
+		recipientAccountID:   recipientAccountID,
+		accountNamesByID:     accountNamesByID,
 	}
+}
 
-	var urlGenerator qr.URLGenerator
+func resolveSingleAccountID(accountNamesByID map[string]string, accountName, accountType string) string {
+	accountIDs, err := getAccountIDs(accountNamesByID, []string{accountName})
+	if err != nil {
+		panic(fmt.Sprintf("Failed to resolve %s account ID: %v", accountType, err))
+	}
+	return accountIDs[0]
+}
+
+func createURLGenerator(appConfig *config.Config) qr.URLGenerator {
 	qrCodeType := appConfig.GetQRCodeType()
 	switch qrCodeType {
 	case "erc681":
-		urlGenerator = qr.NewERC681URLGenerator()
+		return qr.NewERC681URLGenerator()
 	case "recipient_only":
-		urlGenerator = qr.NewRecipientAddressURLGenerator()
+		return qr.NewRecipientAddressURLGenerator()
 	default:
 		panic(fmt.Sprintf("Unsupported QR code type: %v", qrCodeType))
 	}
+}
 
+func promptForDateRange() (time.Time, time.Time) {
 	now := time.Now().Local()
 	nowDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	startDate := nowDay.Add(7 * 24 * time.Hour)
@@ -147,11 +216,53 @@ func main() {
 	// the Validate function in the prompt ensures that it's a valid date value
 	endDate, _ = time.Parse(time.DateOnly, endDateStr)
 
-	scheduledTransactions, err := ynabClient.ScheduledTransactionsService.List(budget.Id)
+	return startDate, endDate
+}
+
+func getScheduledTransactions(ynabClient *ynab.Client, budgetID string) []ynab.ScheduledTransactionDetail {
+	scheduledTransactions, err := ynabClient.ScheduledTransactionsService.List(budgetID)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get scheduled transactions: %v", err))
 	}
+	return scheduledTransactions
+}
 
+func calculateBalances(
+	ynabClient *ynab.Client,
+	budgetID string,
+	appConfig *config.Config,
+	accountInfo accountInfoData,
+	scheduledTransactions []ynab.ScheduledTransactionDetail,
+	startDate, endDate time.Time,
+	debug bool,
+) (map[string]*cliynab.OutboundTransactionBalance, map[string]*cliynab.MinimumBalanceAdjustment) {
+	excludedColorsByAccountID := buildExcludedColorMap(appConfig, accountInfo.accountNamesByID)
+
+	outboundBalances, err := math.CalculateOutboundTransactions(
+		accountInfo.offrampAccountIDs,
+		excludedColorsByAccountID,
+		scheduledTransactions,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to calculate outbound transactions: %v", err))
+	}
+
+	adjustmentsByAccountID := calculateMinimumBalanceAdjustments(
+		ynabClient,
+		budgetID,
+		appConfig,
+		accountInfo.accountNamesByID,
+		scheduledTransactions,
+		endDate,
+		debug,
+	)
+
+	return outboundBalances, adjustmentsByAccountID
+}
+
+func buildExcludedColorMap(appConfig *config.Config, accountNamesByID map[string]string) map[string][]string {
 	excludedColorsByAccountID := make(map[string][]string)
 	for _, offrampAccount := range appConfig.YNABAccounts.OfframpAccounts {
 		for accountID, accountName := range accountNamesByID {
@@ -160,18 +271,26 @@ func main() {
 			}
 		}
 	}
+	return excludedColorsByAccountID
+}
 
-	outboundBalances, err := math.CalculateOutboundTransactions(offrampAccountIDs, excludedColorsByAccountID, scheduledTransactions, startDate, endDate)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to calculate outbound transactions: %v", err))
-	}
-
+func calculateMinimumBalanceAdjustments(
+	ynabClient *ynab.Client,
+	budgetID string,
+	appConfig *config.Config,
+	accountNamesByID map[string]string,
+	scheduledTransactions []ynab.ScheduledTransactionDetail,
+	endDate time.Time,
+	debug bool,
+) map[string]*cliynab.MinimumBalanceAdjustment {
 	adjustmentsByAccountID := make(map[string]*cliynab.MinimumBalanceAdjustment)
+
 	for _, offrampAccount := range appConfig.YNABAccounts.OfframpAccounts {
 		minimumBalanceCents, hasMinimumBalance, err := offrampAccount.MinimumBalanceAsCents()
 		if err != nil {
 			panic(fmt.Sprintf("Failed to parse minimum balance for account '%s': %v", offrampAccount.Name, err))
-		} else if !hasMinimumBalance {
+		}
+		if !hasMinimumBalance {
 			continue
 		}
 
@@ -180,12 +299,19 @@ func main() {
 			if accountName != offrampAccount.Name {
 				continue
 			}
-			ynabAccount, err := ynabClient.AccountsService.Get(budget.Id, accountID)
+
+			ynabAccount, err := ynabClient.AccountsService.Get(budgetID, accountID)
 			if err != nil {
 				panic(fmt.Sprintf("Failed to get account '%s' by ID '%s': %v", accountName, accountID, err))
 			}
 
-			balanceAdjustment, err := math.CalculateMinimumBalanceAdjustment(ynabAccount, scheduledTransactions, minimumBalanceCents, endDate, debug)
+			balanceAdjustment, err := math.CalculateMinimumBalanceAdjustment(
+				ynabAccount,
+				scheduledTransactions,
+				minimumBalanceCents,
+				endDate,
+				debug,
+			)
 			if err != nil {
 				panic(fmt.Sprintf("Failed to calculate minimum balance adjustment for account '%s' by ID '%s': %v", accountName, accountID, err))
 			}
@@ -201,8 +327,18 @@ func main() {
 		}
 	}
 
+	return adjustmentsByAccountID
+}
+
+func displayBalances(
+	outboundBalances map[string]*cliynab.OutboundTransactionBalance,
+	adjustmentsByAccountID map[string]*cliynab.MinimumBalanceAdjustment,
+	accountNamesByID map[string]string,
+	startDate, endDate time.Time,
+) int {
 	outboundCents := 0
 	fmt.Printf("Outbound Account Balances for [%s, %s]:\n", startDate.Format(time.DateOnly), endDate.Format(time.DateOnly))
+
 	for accountID, outboundBalance := range outboundBalances {
 		outboundBalanceCents := outboundBalance.ToCents()
 
@@ -224,29 +360,39 @@ func main() {
 		outboundCents += totalCents
 	}
 
-	if outboundCents == 0 {
-		fmt.Println("No upcoming transactions require funding; exiting")
-		return
-	}
+	return outboundCents
+}
 
-	if dryRun {
-		// Skip all writes to YNAB
-		return
-	}
-
+func createTransactionsAndGenerateQR(
+	ctx context.Context,
+	ynabClient *ynab.Client,
+	budgetID string,
+	appConfig *config.Config,
+	accountInfo accountInfoData,
+	outboundBalances map[string]*cliynab.OutboundTransactionBalance,
+	adjustmentsByAccountID map[string]*cliynab.MinimumBalanceAdjustment,
+	startDate, endDate time.Time,
+	outboundCents int,
+	urlGenerator qr.URLGenerator,
+) {
 	fmt.Println("Creating transactions in YNAB...")
 
-	payeeIDsByAccountIDs, err := getTransferPayeeIDsByAccountID(ynabClient, budget.Id, allAccountIDs, accountNamesByID)
+	payeeIDsByAccountIDs, err := getTransferPayeeIDsByAccountID(
+		ynabClient,
+		budgetID,
+		accountInfo.allAccountIDs,
+		accountInfo.accountNamesByID,
+	)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to resolve transfer payee IDs by account ID: %v", err))
 	}
 
 	transactions, err := cliynab.CreateTransactions(
-		fundsOriginAccountID,
-		recipientAccountID,
+		accountInfo.fundsOriginAccountID,
+		accountInfo.recipientAccountID,
 		outboundBalances,
 		adjustmentsByAccountID,
-		accountNamesByID,
+		accountInfo.accountNamesByID,
 		payeeIDsByAccountIDs,
 		startDate,
 		endDate,
@@ -255,7 +401,7 @@ func main() {
 		panic(fmt.Sprintf("Failed to create transactions to send to YNAB: %v", err))
 	}
 
-	_, err = ynabClient.TransactionsService.CreateBulk(budget.Id, transactions)
+	_, err = ynabClient.TransactionsService.CreateBulk(budgetID, transactions)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create transfer transactions in YNAB: %v", err))
 	}
