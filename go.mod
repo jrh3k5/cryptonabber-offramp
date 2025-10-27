@@ -7,7 +7,7 @@ require (
 	github.com/jrh3k5/oauth-cli v1.0.1
 	github.com/manifoldco/promptui v0.9.0
 	github.com/mdp/qrterminal v1.0.1
-	github.com/onsi/ginkgo/v2 v2.26.0
+	github.com/onsi/ginkgo/v2 v2.27.1
 	github.com/onsi/gomega v1.38.2
 	gopkg.in/yaml.v3 v3.0.1
 )
