@@ -42,7 +42,7 @@ release-build-mac-x64:
 release-build-mac-arm64:
 	echo "Building Mac ARM64 binary"
 	env GOOS=darwin GOARCH=arm64 go build -o dist/darwin/arm64/cryptonabber-offramp cmd/main.go 
-	tar -C dist/darwin/arm64/ -czvf dist/darwin/amd64/osx-arm64.tar.gz cryptonabber-offramp
+	tar -C dist/darwin/arm64/ -czvf dist/darwin/arm64/osx-arm64.tar.gz cryptonabber-offramp
 
 release-build-win-x64:
 	echo "Building Windows x64 binary"
