@@ -34,8 +34,19 @@ release: release-clean release-build
 release-clean:
 	rm -rf dist
 
-release-build:
+release-build-mac-x64:
+	echo "Building Mac x64 binary"
 	env GOOS=darwin GOARCH=amd64 go build -o dist/darwin/amd64/cryptonabber-offramp cmd/main.go 
 	tar -C dist/darwin/amd64/ -czvf dist/darwin/amd64/osx-x64.tar.gz cryptonabber-offramp
+
+release-build-mac-arm64:
+	echo "Building Mac ARM64 binary"
+	env GOOS=darwin GOARCH=arm64 go build -o dist/darwin/arm64/cryptonabber-offramp cmd/main.go 
+	tar -C dist/darwin/arm64/ -czvf dist/darwin/amd64/osx-arm64.tar.gz cryptonabber-offramp
+
+release-build-win-x64:
+	echo "Building Windows x64 binary"
 	env GOOS=windows GOARCH=amd64 go build -o dist/windows/amd64/cryptonabber-offramp.exe cmd/main.go 
 	(cd dist/windows/amd64 && zip -r - cryptonabber-offramp.exe) > dist/windows/amd64/win-x64.zip
+
+release-build: release-build-mac-x64 release-build-mac-arm64 release-build-win-x64
