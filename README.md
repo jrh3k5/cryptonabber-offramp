@@ -1,3 +1,5 @@
+# This project has [migrated to Codeberg](https://codeberg.org/jrh3k5/cryptonabber-offramp)
+
 # cryptonabber-offramp
 
 A CLI tool to make offramping with YNAB integration easier. It does the following:
