@@ -1,31 +1,31 @@
-package math_test
+package ynab_test
 
 import (
 	"time"
 
-	"github.com/davidsteinsland/ynab-go/ynab"
+	ynabapi "github.com/davidsteinsland/ynab-go/ynab"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
 
 var _ = Describe("Balance", func() {
 	Context("CalculateMinimumBalanceAdjustment", func() {
 		When("there are no applicable transactions", func() {
 			It("calculates the amount needed to adjust the existing balance up to the minimum balance", func() {
-				account := ynab.Account{
+				account := ynabapi.Account{
 					Id:      "6dba52e7-3367-4d29-b246-95f7ff83495d",
 					Balance: 3000, // 3.00 USD
 				}
 
 				now := time.Now()
 
-				adjustment, err := math.CalculateMinimumBalanceAdjustment(
+				adjustment, err := ynab.CalculateMinimumBalanceAdjustment(
 					account,
-					[]ynab.ScheduledTransactionDetail{
+					[]ynabapi.ScheduledTransactionDetail{
 						{
-							ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 								AccountId: "other-account",
 								Amount:    -1000, // 1.00 USD
 								DateNext:  now.Format(time.DateOnly),
@@ -46,18 +46,18 @@ var _ = Describe("Balance", func() {
 			It("returns no adjustment", func() {
 				accountID := "27a41dc9-5d2b-4404-a4aa-b83e28d50586"
 
-				account := ynab.Account{
+				account := ynabapi.Account{
 					Id:      accountID,
 					Balance: 20000, // 20.00 USD
 				}
 
 				now := time.Now()
 
-				adjustment, err := math.CalculateMinimumBalanceAdjustment(
+				adjustment, err := ynab.CalculateMinimumBalanceAdjustment(
 					account,
-					[]ynab.ScheduledTransactionDetail{
+					[]ynabapi.ScheduledTransactionDetail{
 						{
-							ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 								AccountId: accountID,
 								Amount:    -1000, // 1.00 USD
 								DateNext:  now.Format(time.DateOnly),
@@ -78,18 +78,18 @@ var _ = Describe("Balance", func() {
 			It("calculates the amount needed to adjust the existing balance up to the minimum balance", func() {
 				accountID := "8e0e8d3f-5411-45e8-b47e-ae0a17486109"
 
-				account := ynab.Account{
+				account := ynabapi.Account{
 					Id:      accountID,
 					Balance: 2000, // 2.00 USD
 				}
 
 				now := time.Now()
 
-				adjustment, err := math.CalculateMinimumBalanceAdjustment(
+				adjustment, err := ynab.CalculateMinimumBalanceAdjustment(
 					account,
-					[]ynab.ScheduledTransactionDetail{
+					[]ynabapi.ScheduledTransactionDetail{
 						{
-							ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 								AccountId: accountID,
 								Amount:    -1000, // 1.00 USD
 								DateNext:  now.Format(time.DateOnly),
@@ -117,23 +117,23 @@ var _ = Describe("Balance", func() {
 
 					nowDateString := time.Now().Format(time.DateOnly)
 
-					balance, err := math.CalculateEffectiveBalanceThrough(
+					balance, err := ynab.CalculateEffectiveBalanceThrough(
 						0,
-						[]ynab.ScheduledTransactionDetail{
+						[]ynabapi.ScheduledTransactionDetail{
 							{
-								ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+								ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 									DateNext: nowDateString,
 									Amount:   -200,
 								},
 							},
 							{
-								ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+								ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 									DateNext: yesterdayDateString,
 									Amount:   -100,
 								},
 							},
 							{
-								ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+								ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 									DateNext: nowDateString,
 									Amount:   -50,
 								},
@@ -156,23 +156,23 @@ var _ = Describe("Balance", func() {
 				tomorrowDateString := now.Add(24 * time.Hour).Format(time.DateOnly)
 				dayAfterTomorrowDateString := now.Add(48 * time.Hour).Format(time.DateOnly)
 
-				balance, err := math.CalculateEffectiveBalanceThrough(
+				balance, err := ynab.CalculateEffectiveBalanceThrough(
 					0,
-					[]ynab.ScheduledTransactionDetail{
+					[]ynabapi.ScheduledTransactionDetail{
 						{
-							ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 								DateNext: nowDateString,
 								Amount:   -200,
 							},
 						},
 						{
-							ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 								DateNext: tomorrowDateString,
 								Amount:   -100,
 							},
 						},
 						{
-							ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+							ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 								DateNext: dayAfterTomorrowDateString,
 								Amount:   -50,
 							},

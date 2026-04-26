@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// Config holds the configuration for the cryptonabber-offramp application.
 type Config struct {
 	ChainID          int                 `yaml:"chain_id"`
 	ContractAddress  string              `yaml:"contract_address"`
@@ -17,12 +18,14 @@ type Config struct {
 	YNABAccounts     *YNABAccountsConfig `yaml:"ynab_accounts"`
 }
 
+// YNABAccountsConfig holds the YNAB account configuration for the application.
 type YNABAccountsConfig struct {
 	FundsOriginAccount    string                      `yaml:"funds_origin_account"`
 	FundsRecipientAccount string                      `yaml:"funds_recipient_account"`
 	OfframpAccounts       []*YNABOfframpAccountConfig `yaml:"offramp_accounts"`
 }
 
+// GetQRCodeType returns the QR code type to use, defaulting to "erc681" if not specified.
 func (c *Config) GetQRCodeType() string {
 	if c.QRCodeType == nil {
 		return "erc681"
@@ -31,6 +34,7 @@ func (c *Config) GetQRCodeType() string {
 	return *c.QRCodeType
 }
 
+// YNABOfframpAccountConfig holds configuration for an individual YNAB account used in offramp calculations.
 type YNABOfframpAccountConfig struct {
 	Name               string       `yaml:"name"`                 // The name of the account as it appears in YNAB
 	ExcludedFlagColors []string     `yaml:"excluded_flag_colors"` // If specified, this is a list of flag colors to exclude from calculations

@@ -9,10 +9,12 @@ import "context"
 type RecipientAddressURLGenerator struct {
 }
 
+// NewRecipientAddressURLGenerator creates a new RecipientAddressURLGenerator.
 func NewRecipientAddressURLGenerator() *RecipientAddressURLGenerator {
 	return &RecipientAddressURLGenerator{}
 }
 
+// Generate creates a recipient address URL from the given QR code details.
 func (*RecipientAddressURLGenerator) Generate(ctx context.Context, qrDetails *Details) (string, error) {
 	return qrDetails.ReceipientAddress, nil
 }

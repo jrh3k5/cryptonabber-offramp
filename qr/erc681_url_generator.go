@@ -16,6 +16,7 @@ func NewERC681URLGenerator() *ERC681URLGenerator {
 	return &ERC681URLGenerator{}
 }
 
+// Generate creates an ERC-681 URL from the given QR code details.
 func (*ERC681URLGenerator) Generate(ctx context.Context, qrDetails *Details) (string, error) {
 	decimals := qrDetails.Decimals
 	tokenDollars := qrDetails.Dollars * int(math.Pow10(decimals))

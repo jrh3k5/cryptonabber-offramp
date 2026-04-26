@@ -1,4 +1,4 @@
-package math
+package ynab
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"github.com/davidsteinsland/ynab-go/ynab"
 
 	"github.com/jrh3k5/cryptonabber-offramp/v3/currency"
-	offrampynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
 
 // CalculateMinimumBalanceAdjustment returns the minimum balance adjustment
@@ -19,7 +18,7 @@ func CalculateMinimumBalanceAdjustment(
 	minimumAccountBalanceCents int,
 	endDateTime time.Time,
 	debug bool,
-) (*offrampynab.MinimumBalanceAdjustment, error) {
+) (*MinimumBalanceAdjustment, error) {
 	filteredTransactions := filterToAccountIDs(transactions, []string{account.Id})
 
 	// Print project bill expenses and time range (only in debug mode)
@@ -33,7 +32,7 @@ func CalculateMinimumBalanceAdjustment(
 
 		totalExpenses := 0
 		for _, transaction := range filteredTransactions {
-			isBefore, err := offrampynab.IsScheduledBeforeInclusive(transaction.ScheduledTransactionSummary, yesterdayDate)
+			isBefore, err := IsScheduledBeforeInclusive(transaction.ScheduledTransactionSummary, yesterdayDate)
 			if err != nil {
 				continue
 			}
@@ -44,7 +43,7 @@ func CalculateMinimumBalanceAdjustment(
 			dayAfterEndYear, dayAfterEndMonth, dayAfterEndDate := endDateTime.Add(24 * time.Hour).Date()
 			endDate := time.Date(dayAfterEndYear, dayAfterEndMonth, dayAfterEndDate, 0, 0, 0, 0, time.UTC)
 
-			isAfter, err := offrampynab.IsScheduledAfterInclusive(transaction.ScheduledTransactionSummary, endDate)
+			isAfter, err := IsScheduledAfterInclusive(transaction.ScheduledTransactionSummary, endDate)
 			if err != nil {
 				continue
 			}
@@ -83,7 +82,7 @@ func CalculateMinimumBalanceAdjustment(
 			fmt.Printf("Projected account balance meets or exceeds minimum account requirement (%s), so no balance adjustment will be created", currency.FormatCents(minimumAccountBalanceCents))
 		}
 
-		return &offrampynab.MinimumBalanceAdjustment{}, nil
+		return &MinimumBalanceAdjustment{}, nil
 	}
 
 	adjustmentTotalCents := minimumAccountBalanceCents - effectiveBalanceCents
@@ -95,7 +94,7 @@ func CalculateMinimumBalanceAdjustment(
 		fmt.Println()
 	}
 
-	return &offrampynab.MinimumBalanceAdjustment{
+	return &MinimumBalanceAdjustment{
 		Dollars: adjustmentDollars,
 		Cents:   adjustmentRemainingCents,
 	}, nil
@@ -116,14 +115,14 @@ func CalculateEffectiveBalanceThrough(
 
 	runningBalance := currentAccountBalance
 	for _, transaction := range transactions {
-		isBefore, err := offrampynab.IsScheduledBeforeInclusive(transaction.ScheduledTransactionSummary, yesterdayDate)
+		isBefore, err := IsScheduledBeforeInclusive(transaction.ScheduledTransactionSummary, yesterdayDate)
 		if err != nil {
 			return 0, fmt.Errorf("failed to check if transaction to payee '%s' is before inclusive: %w", transaction.PayeeName, err)
 		} else if isBefore {
 			continue
 		}
 
-		isAfter, err := offrampynab.IsScheduledAfterInclusive(transaction.ScheduledTransactionSummary, endDate)
+		isAfter, err := IsScheduledAfterInclusive(transaction.ScheduledTransactionSummary, endDate)
 		if err != nil {
 			return 0, fmt.Errorf("failed to check if transaction to payee '%s' is after inclusive: %w", transaction.PayeeName, err)
 		} else if isAfter {

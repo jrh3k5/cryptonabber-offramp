@@ -1,13 +1,13 @@
-package math_test
+package ynab_test
 
 import (
 	"time"
 
-	"github.com/davidsteinsland/ynab-go/ynab"
+	ynabapi "github.com/davidsteinsland/ynab-go/ynab"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
+	"github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
 
 var _ = Describe("OutboundTransactions", func() {
@@ -19,23 +19,23 @@ var _ = Describe("OutboundTransactions", func() {
 			startDate, _ := time.Parse(time.DateOnly, "2020-01-01")
 			endDate, _ := time.Parse(time.DateOnly, "2020-01-03")
 
-			transactions := []ynab.ScheduledTransactionDetail{
+			transactions := []ynabapi.ScheduledTransactionDetail{
 				{
-					ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+					ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 						AccountId: accountID0,
 						Amount:    -1230,
 						DateNext:  startDate.Format(time.DateOnly),
 					},
 				},
 				{
-					ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+					ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 						AccountId: accountID1,
 						Amount:    -456780,
 						DateNext:  endDate.Format(time.DateOnly),
 					},
 				},
 				{
-					ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+					ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 						AccountId: accountID0,
 						Amount:    -560,
 						DateNext:  startDate.Add(24 * time.Hour).Format(time.DateOnly),
@@ -43,7 +43,7 @@ var _ = Describe("OutboundTransactions", func() {
 				},
 			}
 
-			grouped, err := math.CalculateOutboundTransactions([]string{accountID0, accountID1}, nil, transactions, startDate, endDate)
+			grouped, err := ynab.CalculateOutboundTransactions([]string{accountID0, accountID1}, nil, transactions, startDate, endDate)
 			Expect(err).ToNot(HaveOccurred(), "the calculation should not fail")
 			Expect(grouped).To(And(
 				HaveLen(2),
@@ -62,16 +62,16 @@ var _ = Describe("OutboundTransactions", func() {
 			It("filters out those transactions", func() {
 				accountID := "not-all-outbound"
 				dateRange, _ := time.Parse(time.DateOnly, "2020-01-01")
-				transactions := []ynab.ScheduledTransactionDetail{
+				transactions := []ynabapi.ScheduledTransactionDetail{
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID,
 							Amount:    12300,
 							DateNext:  dateRange.Format(time.DateOnly),
 						},
 					},
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID,
 							Amount:    -4560,
 							DateNext:  dateRange.Format(time.DateOnly),
@@ -79,7 +79,7 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
+				grouped, err := ynab.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
 				Expect(err).ToNot(HaveOccurred(), "calcuating the transactions should not fail")
 				Expect(grouped).To(HaveKey(accountID), "the account should be returned")
 				Expect(grouped[accountID].ToCents()).To(Equal(456), "the balance should not include the inbound transaction")
@@ -90,16 +90,16 @@ var _ = Describe("OutboundTransactions", func() {
 			It("filters out those transactions", func() {
 				accountID := "actually-desired-account"
 				dateRange, _ := time.Parse(time.DateOnly, "2021-02-01")
-				transactions := []ynab.ScheduledTransactionDetail{
+				transactions := []ynabapi.ScheduledTransactionDetail{
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID,
 							Amount:    -1230,
 							DateNext:  dateRange.Format(time.DateOnly),
 						},
 					},
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: "excluded",
 							Amount:    -4560,
 							DateNext:  dateRange.Format(time.DateOnly),
@@ -107,7 +107,7 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
+				grouped, err := ynab.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
 				Expect(err).ToNot(HaveOccurred(), "calulating the transactions should not fail")
 				Expect(grouped).To(And(HaveLen(1), HaveKey(accountID)), "only the desired account should be in the returned amounts")
 			})
@@ -117,16 +117,16 @@ var _ = Describe("OutboundTransactions", func() {
 			It("filters out those transactions", func() {
 				accountID := "some-before-start"
 				dateRange, _ := time.Parse(time.DateOnly, "2020-01-01")
-				transactions := []ynab.ScheduledTransactionDetail{
+				transactions := []ynabapi.ScheduledTransactionDetail{
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID,
 							Amount:    -1230,
 							DateNext:  dateRange.Format(time.DateOnly),
 						},
 					},
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID,
 							Amount:    -4560,
 							DateNext:  dateRange.Add(-24 * time.Hour).Format(time.DateOnly),
@@ -134,7 +134,7 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
+				grouped, err := ynab.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
 				Expect(err).ToNot(HaveOccurred(), "calculating the outbound transactions should not fail")
 				Expect(grouped).To(HaveKey(accountID), "the account should be in the returned transactions")
 				Expect(grouped[accountID].ToCents()).To(Equal(123), "only the amount that fits in the date range should be accepted")
@@ -145,16 +145,16 @@ var _ = Describe("OutboundTransactions", func() {
 			It("filters out those transactions", func() {
 				accountID := "some-before-start"
 				dateRange, _ := time.Parse(time.DateOnly, "2020-01-01")
-				transactions := []ynab.ScheduledTransactionDetail{
+				transactions := []ynabapi.ScheduledTransactionDetail{
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID,
 							Amount:    -1230,
 							DateNext:  dateRange.Format(time.DateOnly),
 						},
 					},
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID,
 							Amount:    -4560,
 							DateNext:  dateRange.Add(24 * time.Hour).Format(time.DateOnly),
@@ -162,7 +162,7 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
+				grouped, err := ynab.CalculateOutboundTransactions([]string{accountID}, nil, transactions, dateRange, dateRange)
 				Expect(err).ToNot(HaveOccurred(), "calculating the outbound transactions should not fail")
 				Expect(grouped).To(HaveKey(accountID), "the account should be in the returned transactions")
 				Expect(grouped[accountID].ToCents()).To(Equal(123), "only the amount that fits in the date range should be accepted")
@@ -178,23 +178,23 @@ var _ = Describe("OutboundTransactions", func() {
 
 				startDate, _ := time.Parse(time.DateOnly, "2020-01-01")
 				endDate, _ := time.Parse(time.DateOnly, "2020-01-03")
-				transactions := []ynab.ScheduledTransactionDetail{
+				transactions := []ynabapi.ScheduledTransactionDetail{
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID0,
 							Amount:    -1230,
 							DateNext:  startDate.Format(time.DateOnly),
 						},
 					},
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID1,
 							Amount:    -456780,
 							DateNext:  endDate.Format(time.DateOnly),
 						},
 					},
 					{
-						ScheduledTransactionSummary: ynab.ScheduledTransactionSummary{
+						ScheduledTransactionSummary: ynabapi.ScheduledTransactionSummary{
 							AccountId: accountID0,
 							Amount:    -560,
 							DateNext:  startDate.Add(24 * time.Hour).Format(time.DateOnly),
@@ -203,7 +203,7 @@ var _ = Describe("OutboundTransactions", func() {
 					},
 				}
 
-				grouped, err := math.CalculateOutboundTransactions([]string{accountID0, accountID1}, map[string][]string{
+				grouped, err := ynab.CalculateOutboundTransactions([]string{accountID0, accountID1}, map[string][]string{
 					accountID0: {excludedFlagColor},
 				}, transactions, startDate, endDate)
 				Expect(err).ToNot(HaveOccurred(), "the calculation should not fail")

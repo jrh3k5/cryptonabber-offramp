@@ -1,4 +1,4 @@
-package math
+package ynab
 
 // toDollarsAndCents returns the dollars and cents of the given amount,
 // converting YNAB's three-significant-place precision to two-significant-place.

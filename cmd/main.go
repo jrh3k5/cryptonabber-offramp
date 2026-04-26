@@ -17,9 +17,7 @@ import (
 
 	"github.com/jrh3k5/cryptonabber-offramp/v3/config"
 	"github.com/jrh3k5/cryptonabber-offramp/v3/currency"
-	"github.com/jrh3k5/cryptonabber-offramp/v3/math"
 	"github.com/jrh3k5/cryptonabber-offramp/v3/qr"
-
 	cliynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
 
@@ -238,7 +236,7 @@ func calculateBalances(
 ) (map[string]*cliynab.OutboundTransactionBalance, map[string]*cliynab.MinimumBalanceAdjustment) {
 	excludedColorsByAccountID := buildExcludedColorMap(appConfig, accountInfo.accountNamesByID)
 
-	outboundBalances, err := math.CalculateOutboundTransactions(
+	outboundBalances, err := cliynab.CalculateOutboundTransactions(
 		accountInfo.offrampAccountIDs,
 		excludedColorsByAccountID,
 		scheduledTransactions,
@@ -305,7 +303,7 @@ func calculateMinimumBalanceAdjustments(
 				panic(fmt.Sprintf("Failed to get account '%s' by ID '%s': %v", accountName, accountID, err))
 			}
 
-			balanceAdjustment, err := math.CalculateMinimumBalanceAdjustment(
+			balanceAdjustment, err := cliynab.CalculateMinimumBalanceAdjustment(
 				ynabAccount,
 				scheduledTransactions,
 				minimumBalanceCents,
@@ -420,12 +418,12 @@ func createTransactionsAndGenerateQR(
 		Cents:             totalCents,
 	}
 
-	url, err := urlGenerator.Generate(ctx, qrDetails)
+	qrURL, err := urlGenerator.Generate(ctx, qrDetails)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to generate QR code URL: %v", err))
 	}
 
-	qrterminal.Generate(url, qrterminal.M, os.Stdout)
+	qrterminal.Generate(qrURL, qrterminal.M, os.Stdout)
 }
 
 func getAccountIDs(accountNamesByID map[string]string, accountNames []string) ([]string, error) {
@@ -548,12 +546,12 @@ func readConfiguration(file string) (*config.Config, error) {
 		return nil, fmt.Errorf("failed to read file '%s': %w", file, err)
 	}
 
-	config := &config.Config{}
-	if err := yaml.Unmarshal(fileBytes, config); err != nil {
+	cfg := &config.Config{}
+	if err := yaml.Unmarshal(fileBytes, cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal YAML in file '%s': %w", file, err)
 	}
 
-	return config, nil
+	return cfg, nil
 }
 
 func toUnique(values []string) []string {

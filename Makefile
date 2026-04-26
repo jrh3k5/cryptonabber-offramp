@@ -1,5 +1,5 @@
 GOIMPORTS_VERSION := v0.38.0
-GOLANGCI_LINT_VERSION := v1.64.8
+GOLANGCI_LINT_VERSION := latest
 
 deps:
 	@echo "Checking goimports version..."

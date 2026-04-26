@@ -1,4 +1,4 @@
-package math
+package ynab
 
 import (
 	"fmt"
@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/davidsteinsland/ynab-go/ynab"
-
-	offrampynab "github.com/jrh3k5/cryptonabber-offramp/v3/ynab"
 )
 
 // CalculateOutboundTransactions will pull, from the given scheduled transactions, all outbound transactions that are happening
@@ -18,7 +16,7 @@ func CalculateOutboundTransactions(
 	transactions []ynab.ScheduledTransactionDetail,
 	startDate time.Time,
 	endDate time.Time,
-) (map[string]*offrampynab.OutboundTransactionBalance, error) {
+) (map[string]*OutboundTransactionBalance, error) {
 	filteredByAccount := filterToAccountIDs(transactions, accountIDs)
 
 	filteredByDate, err := filterTransactionsByDateRange(filteredByAccount, startDate, endDate)
@@ -32,12 +30,12 @@ func CalculateOutboundTransactions(
 
 	grouped := groupTransactionsByAccountID(accountIDs, onlyAllowedFlags)
 
-	balances := make(map[string]*offrampynab.OutboundTransactionBalance)
+	balances := make(map[string]*OutboundTransactionBalance)
 	for accountID, accountTransactions := range grouped {
 		sum := sumTransactions(accountTransactions)
 		sum = int(math.Abs(float64(sum)))
 		dollars, cents := toDollarsAndCents(sum)
-		balances[accountID] = &offrampynab.OutboundTransactionBalance{
+		balances[accountID] = &OutboundTransactionBalance{
 			Dollars: dollars,
 			Cents:   cents,
 		}
@@ -95,7 +93,7 @@ func filterTransactionsByDateRange(transactions []ynab.ScheduledTransactionDetai
 	included := make([]ynab.ScheduledTransactionDetail, 0, len(transactions))
 
 	for _, transaction := range transactions {
-		isAfterInclusive, err := offrampynab.IsScheduledAfterInclusive(transaction.ScheduledTransactionSummary, startDate)
+		isAfterInclusive, err := IsScheduledAfterInclusive(transaction.ScheduledTransactionSummary, startDate)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check if transaction to payee '%s' is after inclusive: %w", transaction.PayeeName, err)
 		}
@@ -104,7 +102,7 @@ func filterTransactionsByDateRange(transactions []ynab.ScheduledTransactionDetai
 			continue
 		}
 
-		isBeforeInclusive, err := offrampynab.IsScheduledBeforeInclusive(transaction.ScheduledTransactionSummary, endDate)
+		isBeforeInclusive, err := IsScheduledBeforeInclusive(transaction.ScheduledTransactionSummary, endDate)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check if transaction to payee '%s' is before inclusive: %w", transaction.PayeeName, err)
 		}

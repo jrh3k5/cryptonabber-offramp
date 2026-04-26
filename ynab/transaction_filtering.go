@@ -1,4 +1,4 @@
-package math
+package ynab
 
 import "github.com/davidsteinsland/ynab-go/ynab"
 
