@@ -209,6 +209,29 @@ var _ = Describe("Transactions", func() {
 				Expect(fundsOriginTransaction.Memo).To(ContainSubstring("Offramp 0"), "accounts with non-zero balance transfer should appear in the memo")
 			})
 		})
+
+		When("the funds origin account is the funds recipient account", func() {
+			It("does not create a transaction between the origin and recipient account", func() {
+				transactions, err := cliynab.CreateTransactions(fundsRecipientAccountID,
+					fundsRecipientAccountID,
+					outboundBalances,
+					balanceAdjustmentsByAccountID,
+					namesByID,
+					payeesByAccountID,
+					startDate,
+					endDate)
+
+				Expect(err).ToNot(HaveOccurred(), "creating the transactions should not fail")
+				Expect(transactions).To(HaveLen(2), "the correct number of transactions should be created")
+
+				// This makes sure that only transactions involving the offramp accounts are created.
+				// These calls fail the test if the requested account is not present.
+				// As the above ensures there are only two transactions, this confirms that those two are
+				// for the expected accounts.
+				getTransactionByAccountID(offrampAccountID0, transactions)
+				getTransactionByAccountID(offrampAccountID1, transactions)
+			})
+		})
 	})
 })
 

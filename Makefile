@@ -50,3 +50,6 @@ release-build-win-x64:
 	(cd dist/windows/amd64 && zip -r - cryptonabber-offramp.exe) > dist/windows/amd64/win-x64.zip
 
 release-build: release-build-mac-x64 release-build-mac-arm64 release-build-win-x64
+
+test:
+	go test -v ./...

@@ -49,14 +49,18 @@ func CreateTransactions(
 		return nil, fmt.Errorf("unable to resolve transfer payee ID to receive funds at recipient account ID '%s'", recipientAccountID)
 	}
 
-	transactions := []ynab.SaveTransaction{
-		{
-			AccountId: fundsOriginAccountID,
-			PayeeId:   recipientAccountPayeeID,
-			Amount:    sumCents * -10,
-			Date:      nowDate,
-			Memo:      buildSummaryMemo(startDate, endDate, outboundBalancesByAccountID, balanceAdjustmentsByAccountID, accountNamesByID),
-		},
+	var transactions []ynab.SaveTransaction
+	// Only create a transaction from the origin to the recipient if they aren't one and the same
+	if recipientAccountID != fundsOriginAccountID {
+		transactions = []ynab.SaveTransaction{
+			{
+				AccountId: fundsOriginAccountID,
+				PayeeId:   recipientAccountPayeeID,
+				Amount:    sumCents * -10,
+				Date:      nowDate,
+				Memo:      buildSummaryMemo(startDate, endDate, outboundBalancesByAccountID, balanceAdjustmentsByAccountID, accountNamesByID),
+			},
+		}
 	}
 
 	// Create a transaction from the recipient account to each off the offramp account
